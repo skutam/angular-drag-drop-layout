@@ -1,0 +1,11 @@
+:host {
+  --ddl-item-x: 1;
+  --ddl-item-y: 1;
+  --ddl-item-width: 1;
+  --ddl-item-height: 1;
+
+  background: #cd3939;
+  padding: 20px;
+  cursor: move; /* indicate that items can be dragged */
+  grid-area: var(--ddl-item-y) / var(--ddl-item-x) / span var(--ddl-item-height) / span var(--ddl-item-width);
+}

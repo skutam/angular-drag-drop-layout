@@ -1,0 +1,10 @@
+<button (click)="addItem()">Add Item</button>
+
+<ddl-grid [columns]="8">
+  <ddl-item *ngFor="let item of items" [height]="item.height" [width]="item.width" [x]="item.x" [y]="item.y">
+    <button type="button" (click)="item.width=item.width+1">+ width ({{item.width}})</button>
+    <button type="button" (click)="item.height=item.height+1">+ height ({{item.height}})</button>
+    <button type="button" (click)="item.x=item.x+1">+ x ({{item.x}})</button>
+    <button type="button" (click)="item.y=item.y+1">+ y ({{item.y}})</button>
+  </ddl-item>
+</ddl-grid>
