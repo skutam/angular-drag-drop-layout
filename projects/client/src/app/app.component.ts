@@ -4,11 +4,12 @@ import { GridComponent, DimensionValue } from 'drag-drop-layout';
 import {ItemComponent} from "../../../drag-drop-layout/src/lib/item/item.component";
 import {NgForOf} from "@angular/common";
 import {Item} from "../../../drag-drop-layout/src/lib/item/item.definitions";
+import {FormsModule} from "@angular/forms";
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, GridComponent, ItemComponent, NgForOf],
+  imports: [RouterOutlet, GridComponent, ItemComponent, NgForOf, FormsModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.less'
 })

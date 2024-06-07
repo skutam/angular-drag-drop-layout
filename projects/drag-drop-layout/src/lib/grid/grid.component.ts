@@ -1,43 +1,43 @@
-import {Component, ElementRef, Inject, Input, OnChanges} from '@angular/core';
+import {ChangeDetectionStrategy, Component, effect, ElementRef, Inject, input, InputSignal} from '@angular/core';
 import {ItemComponent} from "../item/item.component";
 import {NgForOf} from "@angular/common";
-import {Grid} from "./grid.definitions";
 import {DimensionValue} from "../lib.definitions";
 
 @Component({
   selector: 'ddl-grid',
   standalone: true,
   imports: [ItemComponent, NgForOf],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './grid.component.html',
   styleUrl: './grid.component.css'
 })
-export class GridComponent implements Grid, OnChanges {
+export class GridComponent {
   private static itemIdCounter: number = 0;
   public id: number = GridComponent.itemIdCounter++;
 
-  @Input() public columns: number = 12;
-  @Input() public rows: number = 3;
-  @Input() public colGap: DimensionValue = {value: 8, unit: 'px'};
-  @Input() public rowGap: DimensionValue = {value: 8, unit: 'px'};
+  public columns = input(12);
+  public rows = input(3);
+  public colGap: InputSignal<DimensionValue> = input(new DimensionValue(8, 'px'));
+  public rowGap: InputSignal<DimensionValue> = input(new DimensionValue(8, 'px'));
 
   constructor(
     @Inject(ElementRef) private grid: ElementRef<HTMLElement>,
-  ) { }
+  ) {
+    this.registerPropertyEffect('--ddl-grid-columns', this.columns);
+    this.registerPropertyEffect('--ddl-grid-rows', this.rows);
+    this.registerPropertyEffect('--ddl-grid-col-gap', this.colGap);
+    this.registerPropertyEffect('--ddl-grid-row-gap', this.rowGap);
+  }
+
+  private registerPropertyEffect(property: string, signalValue: InputSignal<any>): void {
+    effect(() => {
+      this.grid.nativeElement.style.setProperty(property, signalValue().toString());
+    });
+  }
 
   /**
    * TODO: Figure out how to calculate position of item in grid when dragging/resizing
    * TODO: Figure out how to keep data in sync between library and app
    * TODO: Figure out how to calculate move of items when dragging/resizing, so the items move out of the way
    */
-
-  public ngOnChanges(): void {
-    this.updateGrid();
-  }
-
-  private updateGrid(): void {
-    this.grid.nativeElement.style.setProperty('--ddl-grid-columns', this.columns.toString());
-    this.grid.nativeElement.style.setProperty('--ddl-grid-rows', this.rows.toString());
-    this.grid.nativeElement.style.setProperty('--ddl-grid-col-gap', this.colGap.value + this.colGap.unit);
-    this.grid.nativeElement.style.setProperty('--ddl-grid-row-gap', this.rowGap.value + this.rowGap.unit);
-  }
 }
