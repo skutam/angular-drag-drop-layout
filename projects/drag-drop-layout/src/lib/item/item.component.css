@@ -6,6 +6,6 @@
 
   background: #cd3939;
   padding: 20px;
-  cursor: move; /* indicate that items can be dragged */
+  cursor: move;
   grid-area: var(--ddl-item-y) / var(--ddl-item-x) / span var(--ddl-item-height) / span var(--ddl-item-width);
 }

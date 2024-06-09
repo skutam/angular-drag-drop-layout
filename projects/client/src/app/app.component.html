@@ -7,11 +7,8 @@
   <input type="number" [(ngModel)]="rows" placeholder="rows">
 </label>
 
-<ddl-grid [columns]="columns" [rows]="rows">
-  <ddl-item *ngFor="let item of items" [height]="item.height" [width]="item.width" [x]="item.x" [y]="item.y">
-    <button type="button" (click)="item.width=item.width+1">+ width ({{item.width}})</button>
-    <button type="button" (click)="item.height=item.height+1">+ height ({{item.height}})</button>
-    <button type="button" (click)="item.x=item.x+1">+ x ({{item.x}})</button>
-    <button type="button" (click)="item.y=item.y+1">+ y ({{item.y}})</button>
+<ddl-grid [columns]="columns" [rows]="rows" [(items)]="items">
+  <ddl-item *ngFor="let item of items; trackBy: itemTrackBy">
+    <div>{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
   </ddl-item>
 </ddl-grid>
