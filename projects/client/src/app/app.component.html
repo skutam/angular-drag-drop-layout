@@ -10,5 +10,6 @@
 <ddl-grid [columns]="columns" [rows]="rows" [(items)]="items">
   <ddl-item *ngFor="let item of items; trackBy: itemTrackBy">
     <div>{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
+    <div ddlDragHandle class="drag-handle">Handle</div>
   </ddl-item>
 </ddl-grid>

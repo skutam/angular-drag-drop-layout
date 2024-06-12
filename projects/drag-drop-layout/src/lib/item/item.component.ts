@@ -1,10 +1,13 @@
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
-  Component, effect,
-  ElementRef, HostListener, Inject, output, Signal, signal,
+  Component, ContentChildren, effect,
+  ElementRef, HostListener, Inject, OnDestroy, output, OutputRefSubscription, QueryList, Signal, signal,
 } from '@angular/core';
 import {GridComponent} from "../grid/grid.component";
 import {Item, ItemDragEvent} from "./item.definitions";
+import {DragHandleDirective} from "../directives/drag-handle.directive";
+import {Subscription} from "rxjs";
 
 
 @Component({
@@ -15,9 +18,11 @@ import {Item, ItemDragEvent} from "./item.definitions";
   templateUrl: './item.component.html',
   styleUrl: './item.component.css',
 })
-export class ItemComponent {
+export class ItemComponent implements AfterViewInit, OnDestroy {
   protected static itemIdCounter: number = 0;
   public id: string = `${ItemComponent.itemIdCounter++}`;
+
+  @ContentChildren(DragHandleDirective, {descendants: true}) protected dragHandles!: QueryList<DragHandleDirective>;
 
   // Will be updated from grid
   public x = signal(0);
@@ -36,13 +41,18 @@ export class ItemComponent {
   private _dragging: boolean = false;
 
   @HostListener('pointerdown', ['$event'])
-  public startDrag(event: PointerEvent) {
-    this._dragging = true;
-    this.dragStart.emit({
-      item: this.getItem(),
-      event: event,
-    });
-    event.preventDefault();
+  public hostStartDrag(event: PointerEvent) {
+    /**
+     * Only start dragging if the left mouse button is pressed.
+     * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
+     */
+    if (event.button !== 0 && event.buttons !== 1) {
+      return;
+    }
+
+    if (this.dragHandles.length === 0) {
+      this.startDrag(event);
+    }
   }
 
   @HostListener('document:pointermove', ['$event'])
@@ -64,7 +74,6 @@ export class ItemComponent {
       return;
     }
 
-    // this.placeholder.destroyPlaceholder();
     this.dragEnd.emit({
       item: this.getItem(),
       event: event,
@@ -73,6 +82,9 @@ export class ItemComponent {
     event.preventDefault();
   }
 
+  private dragHandleSubscription: Subscription | null = null;
+  private dragHandleDragStartSubscriptions: OutputRefSubscription[] = [];
+
   public constructor(
     @Inject(ElementRef) private item: ElementRef<HTMLDivElement>,
   ) {
@@ -80,6 +92,42 @@ export class ItemComponent {
     this.registerPropertyEffect('--ddl-item-y', this.y);
     this.registerPropertyEffect('--ddl-item-width', this.width);
     this.registerPropertyEffect('--ddl-item-height', this.height);
+  }
+
+  public ngAfterViewInit(): void {
+    this.dragHandleSubscription = this.dragHandles.changes.subscribe(() => this.registerDragHandles());
+    this.registerDragHandles();
+  }
+
+  public ngOnDestroy(): void {
+    this.dragHandleSubscription?.unsubscribe();
+    this.dragHandleDragStartSubscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.dragHandleDragStartSubscriptions = [];
+  }
+
+  private registerDragHandles(): void {
+    // Set cursor
+    this.item.nativeElement.style.cursor = this.dragHandles.length === 0 ? 'move' : 'default';
+
+    // Unsubscribe from previous drag handles
+    this.dragHandleDragStartSubscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.dragHandleDragStartSubscriptions = [];
+
+    // Subscribe to new drag handles
+    this.dragHandleDragStartSubscriptions.push(
+      ...this.dragHandles.map((dragHandle) => {
+        return dragHandle.dragStart.subscribe((event) => this.startDrag(event));
+      })
+    )
+  }
+
+  private startDrag(event: PointerEvent): void {
+    this._dragging = true;
+    this.dragStart.emit({
+      item: this.getItem(),
+      event: event,
+    });
+    event.preventDefault();
   }
 
   private registerPropertyEffect(property: string, signalValue: Signal<any>): void {

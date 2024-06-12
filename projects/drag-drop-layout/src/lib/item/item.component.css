@@ -4,8 +4,9 @@
   --ddl-item-width: 1;
   --ddl-item-height: 1;
 
+  display: block;
+  position: relative;
   background: #cd3939;
   padding: 20px;
-  cursor: move;
   grid-area: var(--ddl-item-y) / var(--ddl-item-x) / span var(--ddl-item-height) / span var(--ddl-item-width);
 }
