@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import {GridComponent, ItemComponent, Item, itemTrackBy, DragHandleDirective} from 'drag-drop-layout';
+import {GridComponent, ItemComponent, Item, itemTrackBy, DragHandleDirective, ResizeType} from 'drag-drop-layout';
 import {NgForOf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 
@@ -14,12 +14,16 @@ import {FormsModule} from "@angular/forms";
 export class AppComponent {
   public columns = 12;
   public rows: number = 3;
+  public colGap: number = 20;
+  public rowGap: number = 20;
 
   public items: Item[] = [
-    new Item('0', 1, 1, 1, 1),
-    new Item('1', 2, 2, 1, 1),
-    new Item('2', 3, 3, 1, 1),
+    new Item('0', 5, 2, 2, 2),
+    // new Item('1', 2, 2, 1, 1),
+    // new Item('2', 3, 3, 1, 1),
   ];
+
+  public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom', 'top-right'];
 
   public addItem(): void {
     if (this.items.length === 0) {

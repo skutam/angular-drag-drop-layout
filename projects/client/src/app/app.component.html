@@ -7,9 +7,13 @@
   <input type="number" [(ngModel)]="rows" placeholder="rows">
 </label>
 
-<ddl-grid [columns]="columns" [rows]="rows" [(items)]="items">
-  <ddl-item *ngFor="let item of items; trackBy: itemTrackBy">
-    <div>{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
-    <div ddlDragHandle class="drag-handle">Handle</div>
+<ddl-grid [columns]="columns"
+          [rows]="rows"
+          [colGap]="colGap"
+          [rowGap]="rowGap"
+          [(items)]="items">
+  <ddl-item *ngFor="let item of items; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
+    <div style="margin-top: 2em; margin-left: 2em;">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
+<!--    <div ddlDragHandle class="drag-handle">Handle</div>-->
   </ddl-item>
 </ddl-grid>

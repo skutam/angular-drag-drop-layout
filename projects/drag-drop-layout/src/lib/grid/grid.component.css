@@ -5,6 +5,7 @@
   --ddl-grid-row-gap: 8px;
 
   display: grid;
+  height: 500px;
   grid-template-columns: repeat(var(--ddl-grid-columns), 1fr);
   grid-template-rows: repeat(var(--ddl-grid-rows), 1fr);
   grid-column-gap: var(--ddl-grid-col-gap);

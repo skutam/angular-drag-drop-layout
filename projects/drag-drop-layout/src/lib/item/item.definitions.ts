@@ -7,6 +7,12 @@ export interface ItemDragEvent {
   event: PointerEvent;
 }
 
+export type ResizeType = 'top-left' | 'top' | 'top-right' | 'right' | 'bottom-right' | 'bottom' | 'bottom-left' | 'left';
+
+export interface ItemResizeEvent extends ItemDragEvent {
+  resizeType: ResizeType;
+}
+
 export class Item {
   public id: string = '';
   public width: number = 1;

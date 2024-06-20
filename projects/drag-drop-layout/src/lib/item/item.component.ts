@@ -1,19 +1,33 @@
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
-  Component, ContentChildren, effect,
-  ElementRef, HostListener, Inject, OnDestroy, output, OutputRefSubscription, QueryList, Signal, signal,
+  Component,
+  ContentChildren,
+  effect,
+  ElementRef, EventEmitter,
+  HostListener,
+  Inject,
+  input,
+  InputSignal,
+  OnDestroy,
+  output,
+  OutputRefSubscription,
+  QueryList,
+  Signal,
+  signal,
 } from '@angular/core';
-import {GridComponent} from "../grid/grid.component";
-import {Item, ItemDragEvent} from "./item.definitions";
+import {Item, ItemDragEvent, ItemResizeEvent, ResizeType} from "./item.definitions";
 import {DragHandleDirective} from "../directives/drag-handle.directive";
 import {Subscription} from "rxjs";
+import {NgForOf} from "@angular/common";
 
 
 @Component({
   selector: 'ddl-item',
   standalone: true,
-  imports: [],
+  imports: [
+    NgForOf
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './item.component.html',
   styleUrl: './item.component.css',
@@ -29,19 +43,41 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public y = signal(0);
   public width = signal(1);
   public height = signal(1);
-  public grid!: GridComponent;
+
+  // TODO: Emit when one of the properties x,y,width,height changes, this will force the grid to reposition the other items
+  public itemChanged: EventEmitter<Item> = new EventEmitter<Item>();
 
   // Inputs
+  public resizeTypes: InputSignal<ResizeType[]> = input(['bottom-left'] as ResizeType[]);
 
   // Outputs
   public dragStart = output<ItemDragEvent>();
   public dragMove = output<ItemDragEvent>();
   public dragEnd = output<ItemDragEvent>();
+  public resizeStart = output<ItemResizeEvent>();
+  public resizeMove = output<ItemResizeEvent>();
+  public resizeEnd = output<ItemResizeEvent>();
 
   private _dragging: boolean = false;
+  private _resizing: boolean = false;
+  private resizeType: ResizeType = 'bottom-right';
+
+  public startResize(event: PointerEvent, resizeType: ResizeType): void {
+    this._resizing = true;
+    this.resizeType = resizeType;
+
+    this.resizeStart.emit({
+      item: this.getItem(),
+      event: event,
+      resizeType: resizeType,
+    });
+
+    event.preventDefault();
+    event.stopPropagation();
+  }
 
   @HostListener('pointerdown', ['$event'])
-  public hostStartDrag(event: PointerEvent) {
+  protected hostStartDrag(event: PointerEvent) {
     /**
      * Only start dragging if the left mouse button is pressed.
      * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
@@ -55,35 +91,55 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  // TODO: Add debounce to this, so that it doesn't fire too often
   @HostListener('document:pointermove', ['$event'])
-  public drag(event: PointerEvent) {
-    if (!this._dragging) {
+  protected dragResizeMove(event: PointerEvent) {
+    if (!this._dragging && !this._resizing) {
       return;
     }
 
-    this.dragMove.emit({
-      item: this.getItem(),
-      event: event,
-    });
+    if (this._dragging) {
+      this.dragMove.emit({
+        item: this.getItem(),
+        event: event,
+      });
+    } else {
+      this.resizeMove.emit({
+        item: this.getItem(),
+        event: event,
+        resizeType: this.resizeType,
+      });
+    }
     event.preventDefault();
   }
 
   @HostListener('document:pointerup', ['$event'])
-  public endDrag(event: PointerEvent) {
-    if (!this._dragging) {
+  protected dragResizeEnd(event: PointerEvent) {
+    if (!this._dragging && !this._resizing) {
       return;
     }
 
-    this.dragEnd.emit({
-      item: this.getItem(),
-      event: event,
-    });
+    if (this._dragging) {
+      this.dragEnd.emit({
+        item: this.getItem(),
+        event: event,
+      });
+    } else {
+      this.resizeEnd.emit({
+        item: this.getItem(),
+        event: event,
+        resizeType: this.resizeType,
+      });
+    }
     this._dragging = false;
+    this._resizing = false;
     event.preventDefault();
   }
 
   private dragHandleSubscription: Subscription | null = null;
   private dragHandleDragStartSubscriptions: OutputRefSubscription[] = [];
+
+  public element: HTMLDivElement;
 
   public constructor(
     @Inject(ElementRef) private item: ElementRef<HTMLDivElement>,
@@ -92,6 +148,7 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
     this.registerPropertyEffect('--ddl-item-y', this.y);
     this.registerPropertyEffect('--ddl-item-width', this.width);
     this.registerPropertyEffect('--ddl-item-height', this.height);
+    this.element = this.item.nativeElement;
   }
 
   public ngAfterViewInit(): void {
