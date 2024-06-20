@@ -9,7 +9,7 @@
     "build:client": "ng build client --configuration production",
     "watch": "ng build --watch --configuration development",
     "watch:lib": "ng build drag-drop-layout --watch --configuration development",
-    "serve:client": "ng serve client",
+    "serve:client": "ng serve client --port 80",
     "test": "ng test",
     "serve:ssr:client": "node dist/client/server/server.mjs"
   },
