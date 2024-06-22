@@ -4,7 +4,7 @@ import {
   Component,
   ContentChildren,
   effect,
-  ElementRef, EventEmitter,
+  ElementRef,
   HostListener,
   Inject,
   input,
@@ -32,6 +32,7 @@ import {NgForOf} from "@angular/common";
   templateUrl: './item.component.html',
   styleUrl: './item.component.css',
 })
+// TODO: Add change indicator to this class, so when resizing/dragging we know when to recalculate the position of other items
 export class ItemComponent implements AfterViewInit, OnDestroy {
   protected static itemIdCounter: number = 0;
   public id: string = `${ItemComponent.itemIdCounter++}`;
@@ -43,9 +44,6 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public y = signal(0);
   public width = signal(1);
   public height = signal(1);
-
-  // TODO: Emit when one of the properties x,y,width,height changes, this will force the grid to reposition the other items
-  public itemChanged: EventEmitter<Item> = new EventEmitter<Item>();
 
   // Inputs
   public resizeTypes: InputSignal<ResizeType[]> = input(['bottom-left'] as ResizeType[]);

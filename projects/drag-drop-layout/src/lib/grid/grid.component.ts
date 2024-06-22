@@ -6,11 +6,11 @@ import {
   ElementRef,
   Inject,
   input,
-  InputSignal, model, ModelSignal, OnDestroy, OutputRefSubscription, QueryList, ViewChild,
+  InputSignal, model, ModelSignal, OnDestroy, OutputRefSubscription, QueryList,
 } from '@angular/core';
 import {DOCUMENT, NgForOf} from "@angular/common";
 import {ItemComponent} from "../item/item.component";
-import {Item, ResizeType} from "../item/item.definitions";
+import {getResizeInfo, Item, ResizeType} from "../item/item.definitions";
 import {Subscription} from "rxjs";
 import {Placeholder} from "../placeholder";
 
@@ -28,7 +28,6 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   public id: string = `${GridComponent.itemIdCounter++}`;
 
   @ContentChildren(ItemComponent, {descendants: true}) private itemComponents!: QueryList<ItemComponent>;
-  @ViewChild('tmp') private tmp!: ElementRef<HTMLElement>;
 
   // Inputs
   public columns = input(12);
@@ -155,6 +154,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   // TODO: Refactor the code to make it more readable and maintainable
   private resizeMove(event: PointerEvent, item: ItemComponent, resizeType: ResizeType): void {
     const {cellWidth, cellHeight} = this.calcGridMetrics(event);
+    const resizeInfo = getResizeInfo(resizeType);
 
     let newWidth = this.placeholder.width;
     let newHeight = this.placeholder.height;
@@ -162,91 +162,51 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     let newDeltaY = this.placeholder.y;
 
     // Calculate width and move item on an x-axis
-    switch (resizeType) {
-      case 'top-right':
-      case 'top-left':
-      case 'bottom-left':
-      case 'bottom-right':
-      case 'right':
-      case 'left':
-        // Resize width and move item on x axis
-        if (resizeType === 'left' || resizeType === 'top-left' || resizeType === 'bottom-left') {
-          newDeltaX = Math.min(event.clientX, this.initItemRect!.right);
-          newWidth = this.initItemRect!.right - event.clientX;
-        } else {
-          newWidth = event.clientX - this.initItemRect!.left;
-        }
-        break;
+    if (resizeInfo.horizontal) {
+      // Resize width and move item on x axis
+      if (resizeInfo.left) {
+        newDeltaX = Math.min(event.clientX, this.initItemRect!.right);
+        newWidth = this.initItemRect!.right - event.clientX;
+      } else {
+        newWidth = event.clientX - this.initItemRect!.left;
+      }
     }
 
     // Calculate height and move item on y axis
-    switch (resizeType) {
-      case 'top':
-      case 'top-left':
-      case 'top-right':
-      case 'bottom':
-      case 'bottom-left':
-      case 'bottom-right':
-        // Resize height and move item on y axis
-        if (resizeType === 'top' || resizeType === 'top-left' || resizeType === 'top-right') {
-          newDeltaY = Math.min(event.clientY, this.initItemRect!.bottom);
-          newHeight = this.initItemRect!.bottom - event.clientY;
-        } else {
-          newHeight = event.clientY - this.initItemRect!.top;
-        }
-        break;
+    if (resizeInfo.vertical) {
+      // Resize height and move item on y axis
+      if (resizeInfo.top) {
+        newDeltaY = Math.min(event.clientY, this.initItemRect!.bottom);
+        newHeight = this.initItemRect!.bottom - event.clientY;
+      } else {
+        newHeight = event.clientY - this.initItemRect!.top;
+      }
     }
 
     // Force width and height to be at least 1 pixel
     newWidth = Math.max(1, newWidth);
     newHeight = Math.max(1, newHeight);
+    this.placeholder.resizePlaceholder(newWidth, newHeight);
 
     let widthCols = Math.ceil(newWidth / (cellWidth + this.colGap()));
     let heightCells = Math.ceil(newHeight / (cellHeight + this.rowGap()));
 
-    //
-    switch (resizeType) {
-      case 'bottom-left':
-      case 'left':
-      case 'top-left':
-        widthCols = Math.min(widthCols, this.initResizeItem!.x + this.initResizeItem!.width - 1);
-        item.width.set(Math.max(1, widthCols));
-        break;
-
-      default:
-        item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
-        break;
+    if (resizeInfo.left) {
+      widthCols = Math.min(widthCols, this.initResizeItem!.x + this.initResizeItem!.width - 1);
+      item.width.set(Math.max(1, widthCols));
+      item.x.set(Math.max(1, (this.initResizeItem!.x + this.initResizeItem!.width) - item.width()));
+    } else {
+      item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
     }
 
-    switch (resizeType) {
-      case 'top-left':
-      case 'top':
-      case 'top-right':
-        heightCells = Math.min(heightCells, this.initResizeItem!.y + this.initResizeItem!.height - 1);
-        item.height.set(Math.max(1, heightCells));
-        break;
-      default:
-        item.height.set(Math.max(1, Math.min(heightCells, this.rows() - item.y() + 1)));
-        break;
+    if (resizeInfo.top) {
+      heightCells = Math.min(heightCells, this.initResizeItem!.y + this.initResizeItem!.height - 1);
+      item.height.set(Math.max(1, heightCells));
+      item.y.set(Math.max(1, (this.initResizeItem!.y + this.initResizeItem!.height) - item.height()));
+    } else {
+      item.height.set(Math.max(1, Math.min(heightCells, this.rows() - item.y() + 1)));
     }
-    this.placeholder.resizePlaceholder(newWidth, newHeight);
-
-    // Calculate move only when resizing the item on the anchor points
-    switch (resizeType) {
-      case 'bottom-left':
-      case 'left':
-      case 'top-left':
-      case 'top':
-      case 'top-right':
-        if (resizeType === 'top' || resizeType === 'top-left' || resizeType === 'top-right') {
-          item.y.set(Math.max(1, (this.initResizeItem!.y + this.initResizeItem!.height) - item.height()));
-        }
-        if (resizeType === 'left' || resizeType === 'top-left' || resizeType === 'bottom-left') {
-          item.x.set(Math.max(1, (this.initResizeItem!.x + this.initResizeItem!.width) - item.width()));
-        }
-        this.placeholder.movePlaceholder(newDeltaX, newDeltaY);
-        break;
-    }
+    this.placeholder.movePlaceholder(newDeltaX, newDeltaY);
   }
 
   private validateItems(): void {

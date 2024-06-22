@@ -7,13 +7,21 @@
   <input type="number" [(ngModel)]="rows" placeholder="rows">
 </label>
 
+<!-- Generate list of ResizeTypes, that can be added or removed to resizeTypes variable -->
+<label> Resize Types:
+  <label *ngFor="let resizeType of RESIZE_TYPES">
+    <input type="checkbox" [checked]="resizeTypes.includes(resizeType)" [value]="resizeType" (change)="toggleResizeType(resizeType)">
+    {{resizeType}}
+  </label>
+</label>
+
 <ddl-grid [columns]="columns"
           [rows]="rows"
           [colGap]="colGap"
           [rowGap]="rowGap"
           [(items)]="items">
   <ddl-item *ngFor="let item of items; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
-    <div style="margin-top: 2em; margin-left: 2em;">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
-<!--    <div ddlDragHandle class="drag-handle">Handle</div>-->
+    <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
+    <div ddlDragHandle class="drag-handle">Handle</div>
   </ddl-item>
 </ddl-grid>
