@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import {DOCUMENT, NgForOf} from "@angular/common";
 import {ItemComponent} from "../item/item.component";
-import {Item} from "../item/item.definitions";
+import {getResizeInfo, Item, ResizeType} from "../item/item.definitions";
 import {Subscription} from "rxjs";
 import {Placeholder} from "../placeholder";
 
@@ -40,7 +40,11 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   private itemComponentSubscriptions: OutputRefSubscription[] = [];
 
   private gridRect: DOMRect | null = null;
-  private placeholder;
+  private initialX: number = 0;
+  private initialY: number = 0;
+  private placeholder: Placeholder;
+  private initItemRect: DOMRect | null = null;
+  private initResizeItem: Item | null = null;
 
   constructor(
     @Inject(DOCUMENT) private document: Document,
@@ -82,7 +86,6 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
     this.itemComponents.forEach((item, index) => {
       const itemData = this.items()[index];
-      item.grid = this;
       item.id = itemData.id;
       item.x.set(itemData.x);
       item.y.set(itemData.y);
@@ -90,9 +93,17 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       item.height.set(itemData.height);
 
       this.itemComponentSubscriptions.push(
+        // Register drag events
         item.dragStart.subscribe(({event}) => this.dragStart(event, item)),
         item.dragMove.subscribe(({event}) => this.dragMove(event, item)),
         item.dragEnd.subscribe(() => {
+          this.placeholder.destroyPlaceholder()
+          this.items.set(this.itemComponents.map((item) => item.getItem()));
+        }),
+        // Register resize events
+        item.resizeStart.subscribe(() => this.resizeStart(item)),
+        item.resizeMove.subscribe(({event, resizeType}) => this.resizeMove(event, item, resizeType)),
+        item.resizeEnd.subscribe(() => {
           this.placeholder.destroyPlaceholder()
           this.items.set(this.itemComponents.map((item) => item.getItem()));
         }),
@@ -105,28 +116,97 @@ export class GridComponent implements AfterViewInit, OnDestroy {
    */
   private dragStart(event: PointerEvent, item: ItemComponent): void {
     this.gridRect = this.grid.nativeElement.getBoundingClientRect();
-    const {deltaX, deltaY, cellWidth, cellHeight} = this.calcGridMetrics(event);
+    const {width, height, x, y} = item.element.getBoundingClientRect();
 
-    const width = cellWidth * item.width();
-    const height = cellHeight * item.height();
+    this.initialX = event.clientX;
+    this.initialY = event.clientY;
 
-    this.placeholder.createPlaceholder(width, height, deltaX, deltaY)
+    this.placeholder.createPlaceholder(width, height, x, y);
   }
 
   /**
    * Moves the item while dragging
    */
   private dragMove(event: PointerEvent, item: ItemComponent): void {
-    // Get position of mouse relative to grid
-    const {deltaX, deltaY, cellWidth, cellHeight} = this.calcGridMetrics(event);
+    // Get position of mouse relative to grid TODO: Optimize this, so it only gets calculated once in the dragStart
+    const {cellWidth, cellHeight} = this.calcGridMetrics(event);
 
-    const newX = Math.floor((cellWidth + deltaX) / cellWidth);
-    const newY = Math.floor((cellHeight + deltaY) / cellHeight);
+    const newDeltaX = this.placeholder.x - (this.initialX - event.clientX);
+    const newDeltaY = this.placeholder.y - (this.initialY - event.clientY);
 
-    item.x.set(Math.max(0, Math.min(newX, this.columns())));
-    item.y.set(Math.max(0, Math.min(newY, this.rows())));
+    const newX = Math.floor((cellWidth + newDeltaX) / cellWidth);
+    const newY = Math.floor((cellHeight + newDeltaY) / cellHeight);
 
-    this.placeholder.movePlaceholder(deltaX, deltaY);
+    item.x.set(Math.max(1, Math.min(newX, this.columns() - item.width() + 1)));
+    item.y.set(Math.max(1, Math.min(newY, this.rows() - item.height() + 1)));
+
+    this.placeholder.movePlaceholder(newDeltaX, newDeltaY);
+  }
+
+  private resizeStart(item: ItemComponent): void {
+    this.gridRect = this.grid.nativeElement.getBoundingClientRect();
+    this.initItemRect = item.element.getBoundingClientRect();
+    this.initResizeItem = item.getItem();
+    this.placeholder.createPlaceholder(this.initItemRect.width, this.initItemRect.height, this.initItemRect.x, this.initItemRect.y);
+  }
+
+  // TODO: After fixing, try to combine dragMove and resizeMove into one function and try to optimize and simplify the code
+  // TODO: Refactor the code to make it more readable and maintainable
+  private resizeMove(event: PointerEvent, item: ItemComponent, resizeType: ResizeType): void {
+    const {cellWidth, cellHeight} = this.calcGridMetrics(event);
+    const resizeInfo = getResizeInfo(resizeType);
+
+    let newWidth = this.placeholder.width;
+    let newHeight = this.placeholder.height;
+    let newDeltaX = this.placeholder.x;
+    let newDeltaY = this.placeholder.y;
+
+    // Calculate width and move item on an x-axis
+    if (resizeInfo.horizontal) {
+      // Resize width and move item on x axis
+      if (resizeInfo.left) {
+        newDeltaX = Math.min(event.clientX, this.initItemRect!.right);
+        newWidth = this.initItemRect!.right - event.clientX;
+      } else {
+        newWidth = event.clientX - this.initItemRect!.left;
+      }
+    }
+
+    // Calculate height and move item on y axis
+    if (resizeInfo.vertical) {
+      // Resize height and move item on y axis
+      if (resizeInfo.top) {
+        newDeltaY = Math.min(event.clientY, this.initItemRect!.bottom);
+        newHeight = this.initItemRect!.bottom - event.clientY;
+      } else {
+        newHeight = event.clientY - this.initItemRect!.top;
+      }
+    }
+
+    // Force width and height to be at least 1 pixel
+    newWidth = Math.max(1, newWidth);
+    newHeight = Math.max(1, newHeight);
+    this.placeholder.resizePlaceholder(newWidth, newHeight);
+
+    let widthCols = Math.ceil(newWidth / (cellWidth + this.colGap()));
+    let heightCells = Math.ceil(newHeight / (cellHeight + this.rowGap()));
+
+    if (resizeInfo.left) {
+      widthCols = Math.min(widthCols, this.initResizeItem!.x + this.initResizeItem!.width - 1);
+      item.width.set(Math.max(1, widthCols));
+      item.x.set(Math.max(1, (this.initResizeItem!.x + this.initResizeItem!.width) - item.width()));
+    } else {
+      item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
+    }
+
+    if (resizeInfo.top) {
+      heightCells = Math.min(heightCells, this.initResizeItem!.y + this.initResizeItem!.height - 1);
+      item.height.set(Math.max(1, heightCells));
+      item.y.set(Math.max(1, (this.initResizeItem!.y + this.initResizeItem!.height) - item.height()));
+    } else {
+      item.height.set(Math.max(1, Math.min(heightCells, this.rows() - item.y() + 1)));
+    }
+    this.placeholder.movePlaceholder(newDeltaX, newDeltaY);
   }
 
   private validateItems(): void {
@@ -155,8 +235,11 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     const gridWidth = this.gridRect!.width;
     const gridHeight = this.gridRect!.height;
 
-    const cellWidth = (gridWidth - this.colGap()) / this.columns();
-    const cellHeight = (gridHeight - this.rowGap()) / this.rows();
+    // const cellWidth = (gridWidth - this.colGap()) / this.columns();
+    // const cellHeight = (gridHeight - this.rowGap()) / this.rows();
+
+    const cellWidth = (gridWidth - this.colGap() * (this.columns() - 1)) / this.columns();
+    const cellHeight = (gridHeight - this.rowGap() * (this.rows() - 1)) / this.rows();
     return {deltaX, deltaY, cellWidth, cellHeight};
   }
 
