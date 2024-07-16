@@ -1,13 +1,13 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import {GridComponent, ItemComponent, Item, itemTrackBy, DragHandleDirective, ResizeType} from 'drag-drop-layout';
+import {GridComponent, ItemComponent, Item, itemTrackBy, DragHandleDirective, DragItemDirective, DragItemsDirective, ResizeType} from 'drag-drop-layout';
 import {NgForOf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NgForOf, FormsModule, GridComponent, ItemComponent, DragHandleDirective],
+  imports: [RouterOutlet, NgForOf, FormsModule, GridComponent, ItemComponent, DragHandleDirective, DragItemDirective, DragItemsDirective],
   templateUrl: './app.component.html',
   styleUrl: './app.component.less'
 })
@@ -24,6 +24,7 @@ export class AppComponent {
   ];
 
   public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom', 'top-right'];
+  public dragItems: string[] = ['Item 1', 'Item 2', 'Item 3'];
 
   public addItem(): void {
     if (this.items.length === 0) {
