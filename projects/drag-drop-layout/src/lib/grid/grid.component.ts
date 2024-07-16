@@ -6,13 +6,16 @@ import {
   ElementRef,
   Inject,
   input,
-  InputSignal, model, ModelSignal, OnDestroy, OutputRefSubscription, QueryList,
+  InputSignal, model, OnDestroy, output, OutputRefSubscription, QueryList,
 } from '@angular/core';
 import {DOCUMENT, NgForOf} from "@angular/common";
 import {ItemComponent} from "../item/item.component";
 import {getResizeInfo, Item, ResizeType} from "../item/item.definitions";
 import {Subscription} from "rxjs";
 import {Placeholder} from "../placeholder";
+import {GridDragItemService} from "../services/grid-drag-item.service";
+import {DragItemDirective} from "../directives/drag-item.directive";
+import {GridEvent} from "./grid.definitions";
 
 
 @Component({
@@ -32,12 +35,17 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   // Inputs
   public columns = input(12);
   public rows = input(3);
-  public colGap: InputSignal<number> = input(8);
-  public rowGap: InputSignal<number> = input(8);
-  public items: ModelSignal<Item[]> = model([] as Item[]);
+  public colGap= input(8);
+  public rowGap = input(8);
+  public items = model([] as Item[]);
+
+  // Outputs
+  public dragEnter = output<GridEvent>();
+  public dragLeave = output<GridEvent>();
 
   private itemComponentsSubscription: Subscription | null = null;
   private itemComponentSubscriptions: OutputRefSubscription[] = [];
+  private dragItemComponentSubscriptions: OutputRefSubscription[] = [];
 
   private gridRect: DOMRect | null = null;
   private initialX: number = 0;
@@ -49,6 +57,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   constructor(
     @Inject(DOCUMENT) private document: Document,
     @Inject(ElementRef) public grid: ElementRef<HTMLElement>,
+    private gridDragItemService: GridDragItemService,
   ) {
     this.registerPropertyEffect('--ddl-grid-columns', this.columns);
     this.registerPropertyEffect('--ddl-grid-rows', this.rows);
@@ -56,23 +65,68 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     this.registerPropertyEffect('--ddl-grid-row-gap', this.rowGap, 'px');
 
     this.placeholder = new Placeholder(document);
+
+    this.gridDragItemService.registerGrid(this);
   }
 
   public ngAfterViewInit(): void {
     this.itemComponentsSubscription = this.itemComponents.changes.subscribe(() => this.updateItemComponents());
     this.updateItemComponents();
+    this.gridDragItemService.getGridItems(this).subscribe((items) => {
+      this.updateItemDirectiveComponents(items);
+    });
   }
 
   public ngOnDestroy(): void {
     this.itemComponentsSubscription?.unsubscribe();
     this.itemComponentSubscriptions.forEach((subscription) => subscription.unsubscribe());
     this.itemComponentSubscriptions = [];
+    this.dragItemComponentSubscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.dragItemComponentSubscriptions = [];
+    this.gridDragItemService.unregisterGrid(this);
   }
 
   private registerPropertyEffect(property: string, signalValue: InputSignal<any>, append: string = ''): void {
     effect(() => {
       this.grid.nativeElement.style.setProperty(property, signalValue().toString() + append);
     });
+  }
+
+  private updateItemDirectiveComponents(items: DragItemDirective[]): void {
+    this.dragItemComponentSubscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.dragItemComponentSubscriptions = [];
+
+    items.forEach((item) => {
+      this.dragItemComponentSubscriptions.push(
+        item.dragStart.subscribe((event) => this.dragStartItem(event, item)),
+        item.dragMove.subscribe((event) => this.dragMoveItem(event, item)),
+        item.dragEnd.subscribe((event) => this.dragEndItem(event, item)),
+      );
+    });
+  }
+
+  private dragStartItem(event: PointerEvent, item: DragItemDirective): void {
+    console.log('drag start item', event, item);
+  }
+
+  private dragMoveItem(event: PointerEvent, item: DragItemDirective): void {
+    console.log('drag move item', event, item);
+    if (this.isInsideGrid(event)) {
+      this.dragEnter.emit({
+        item: item.getItem(),
+        event: event,
+        grid: this,
+      });
+    }
+  }
+
+  private dragEndItem(event: PointerEvent, item: DragItemDirective): void {
+    console.log('drag end item', event, item);
+  }
+
+  private isInsideGrid(event: PointerEvent): boolean {
+    return this.gridRect!.left <= event.clientX && event.clientX <= this.gridRect!.right &&
+      this.gridRect!.top <= event.clientY && event.clientY <= this.gridRect!.bottom;
   }
 
   /**

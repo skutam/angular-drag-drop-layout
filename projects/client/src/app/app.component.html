@@ -15,7 +15,7 @@
   </label>
 </label>
 
-<ddl-grid [columns]="columns"
+<ddl-grid [columns]="columns" #grid
           [rows]="rows"
           [colGap]="colGap"
           [rowGap]="rowGap"
@@ -25,3 +25,11 @@
     <div ddlDragHandle class="drag-handle">Handle</div>
   </ddl-item>
 </ddl-grid>
+
+<div class="drag-items" ddlDragItems [grids]="[grid]">
+  <div ddlDragItem
+       class="drag-item"
+       [draggable]="i === 0"
+       [disabled]="i == 1"
+       *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
+</div>
