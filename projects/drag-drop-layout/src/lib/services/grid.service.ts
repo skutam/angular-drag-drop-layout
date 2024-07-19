@@ -1,72 +1,64 @@
-import {HostListener, Injectable} from '@angular/core';
+import {DestroyRef, Inject, Injectable, NgZone} from '@angular/core';
 import {Item} from "../item/item.definitions";
 import {ItemComponent} from "../item/item.component";
+import {DOCUMENT} from "@angular/common";
+import {
+  filter,
+  fromEvent,
+  Observable,
+  sampleTime,
+  Subject,
+  takeUntil
+} from "rxjs";
+import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 
 @Injectable({
   providedIn: 'root'
 })
 export class GridService {
-  private currentlyDraggingItem: Item | null = null;
-  private currentlyDraggingItemComponent: ItemComponent | null = null;
-
   private _dragging = false;
   private _resizing = false;
 
-  @HostListener('document:pointermove', ['$event'])
-  private dragResizeMove(event: PointerEvent) {
-    if (!this._dragging && !this._resizing) {
-      return;
-    }
+  public pointerMove: Observable<PointerEvent>;
+  private pointerMoveSubject: Subject<PointerEvent> = new Subject<PointerEvent>();
 
-    if (this._dragging) {
-      this.dragMove(event);
-    } else {
-      this.resizeMove(event);
-    }
-    event.preventDefault();
+  public pointerEnd: Observable<PointerEvent>;
+  private pointerEndSubject: Subject<PointerEvent> = new Subject<PointerEvent>();
+
+  constructor(
+    @Inject(DOCUMENT) private document: Document,
+    private destroyRef: DestroyRef,
+    private ngZone: NgZone,
+  ) {
+    this.pointerMove = this.pointerMoveSubject.asObservable();
+    this.pointerEnd = this.pointerEndSubject.asObservable();
+
+    this.ngZone.runOutsideAngular(() => {
+      fromEvent<PointerEvent>(this.document, 'pointermove').pipe(
+        takeUntil(this.pointerEnd),
+        sampleTime(20),
+        filter(() => this._dragging || this._resizing),
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe((event: PointerEvent) => {
+        this.pointerMoveSubject.next(event);
+      });
+
+      fromEvent<PointerEvent>(this.document, 'pointerup').pipe(
+        filter(() => this._dragging || this._resizing),
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe((event: PointerEvent) => {
+        this._dragging = false;
+        this._resizing = false;
+        this.pointerEndSubject.next(event);
+      });
+    });
   }
-
-  @HostListener('document:pointerup', ['$event'])
-  private dragResizeStop(event: PointerEvent) {
-    if (!this._dragging && !this._resizing) {
-      return;
-    }
-
-    if (this._dragging) {
-      this.dragEnd(event);
-    } else {
-      this.resizeEnd(event);
-    }
-    this._dragging = false;
-    this._resizing = false;
-    event.preventDefault();
-  }
-
-  constructor() { }
 
   public startDrag(item: Item, itemCom: ItemComponent): void {
     this._dragging = true;
-    this.currentlyDraggingItem = item;
-    this.currentlyDraggingItemComponent = itemCom;
   }
-
-  public dragMove(event: PointerEvent): void {
-
-  }
-
-  public dragEnd(event: PointerEvent): void {
-  }
-
 
   public startResize(item: Item, resizeType: string): void {
     this._resizing = true;
-    this.currentlyDraggingItem = item;
-  }
-
-  public resizeMove(event: PointerEvent): void {
-
-  }
-
-  public resizeEnd(event: PointerEvent): void {
   }
 }
