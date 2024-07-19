@@ -18,8 +18,9 @@ import {
 } from '@angular/core';
 import {Item, ItemDragEvent, ItemResizeEvent, ResizeType} from "./item.definitions";
 import {DragHandleDirective} from "../directives/drag-handle.directive";
-import {Subscription} from "rxjs";
+import {Subscription, take, takeUntil} from "rxjs";
 import {NgForOf} from "@angular/common";
+import {GridService} from "../services/grid.service";
 
 
 @Component({
@@ -141,6 +142,7 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
 
   public constructor(
     @Inject(ElementRef) private item: ElementRef<HTMLDivElement>,
+    private gridService: GridService,
   ) {
     this.registerPropertyEffect('--ddl-item-x', this.x);
     this.registerPropertyEffect('--ddl-item-y', this.y);
@@ -182,6 +184,15 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
       item: this.getItem(),
       event: event,
     });
+    this.gridService.pointerMove.pipe(
+      takeUntil(this.gridService.pointerEnd),
+    ).subscribe((event: PointerEvent) => {
+      this.dragMove.emit({
+        item: this.getItem(),
+        event: event,
+      });
+    })
+    this.gridService.startDrag(this.getItem(), this);
     event.preventDefault();
   }
 
