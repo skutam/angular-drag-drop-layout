@@ -18,6 +18,10 @@ export class GridDragItemService {
     return this.grids.get(grid)!;
   }
 
+  public getGrids(): GridComponent[] {
+    return Array.from(this.grids.keys());
+  }
+
   /**
    * Register a grid with the service, needs to be called when the grid is constructed
    */

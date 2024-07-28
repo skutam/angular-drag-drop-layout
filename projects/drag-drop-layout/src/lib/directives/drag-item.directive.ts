@@ -1,6 +1,9 @@
-import {Directive, ElementRef, HostListener, Inject, input, OnDestroy, output} from '@angular/core';
+import {DestroyRef, Directive, ElementRef, HostListener, Inject, input, OnDestroy, output} from '@angular/core';
 import {GridDragItemService} from "../services/grid-drag-item.service";
 import {Item} from "../item/item.definitions";
+import {GridService} from "../services/grid.service";
+import {take, takeUntil} from "rxjs";
+import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 
 @Directive({
   selector: '[ddlDragItem]',
@@ -28,10 +31,8 @@ export class DragItemDirective implements OnDestroy {
   public dragMove = output<PointerEvent>();
   public dragEnd = output<PointerEvent>();
 
-  private _dragging: boolean = false;
-
   @HostListener('pointerdown', ['$event'])
-  private startDrag(event: PointerEvent) {
+  public startDrag(event: PointerEvent) {
     /**
      * Only start dragging if the left mouse button is pressed.
      * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
@@ -40,36 +41,31 @@ export class DragItemDirective implements OnDestroy {
       return;
     }
 
-    this._dragging = true;
+    event.preventDefault();
+
     this.dragStart.emit(event);
-    event.preventDefault();
-  }
+    const {x, y} = this.dragItem.nativeElement.getBoundingClientRect();
+    this.gridService.startItemDrag(this.getItem(), event, {
+      x: x - event.clientX,
+      y: y - event.clientY,
+    });
 
-  // TODO: Add debounce to this, so that it doesn't fire too often
-  @HostListener('document:pointermove', ['$event'])
-  protected moveDrag(event: PointerEvent) {
-    if (!this._dragging) {
-      return;
-    }
+    this.gridService.pointerMove$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      takeUntil(this.gridService.pointerEnd$),
+    ).subscribe(({event}) => this.dragMove.emit(event));
 
-    this.dragMove.emit(event);
-    event.preventDefault();
-  }
-
-  @HostListener('document:pointerup', ['$event'])
-  protected dragResizeEnd(event: PointerEvent) {
-    if (!this._dragging) {
-      return;
-    }
-
-    this.dragEnd.emit(event);
-    this._dragging = false;
-    event.preventDefault();
+    this.gridService.pointerEnd$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      take(1),
+    ).subscribe(({event}) => this.dragEnd.emit(event));
   }
 
   public constructor(
-    @Inject(ElementRef) private item: ElementRef<HTMLElement>,
     private gridDragItemService: GridDragItemService,
+    private gridService: GridService,
+    @Inject(ElementRef) public dragItem: ElementRef<HTMLElement>,
+    private destroyRef: DestroyRef,
   ) { }
 
   public ngOnDestroy(): void {
@@ -77,11 +73,6 @@ export class DragItemDirective implements OnDestroy {
   }
 
   public getItem(): Item {
-    return new Item(
-      this.id,
-      0,
-      0,
-      this.width(),
-      this.height());
+    return new Item(this.id, 0, 0, this.width(), this.height());
   }
 }

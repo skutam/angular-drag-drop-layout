@@ -8,7 +8,7 @@ export class DragHandleDirective {
   public dragStart = output<PointerEvent>();
 
   @HostListener('pointerdown', ['$event'])
-  private startDrag(event: PointerEvent) {
+  public startDrag(event: PointerEvent) {
     /**
      * Only start dragging if the left mouse button is pressed.
      * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states

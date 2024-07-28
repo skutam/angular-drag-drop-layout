@@ -2,7 +2,7 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
-  ContentChildren,
+  ContentChildren, DestroyRef,
   effect,
   ElementRef,
   HostListener,
@@ -18,11 +18,15 @@ import {
 } from '@angular/core';
 import {Item, ItemDragEvent, ItemResizeEvent, ResizeType} from "./item.definitions";
 import {DragHandleDirective} from "../directives/drag-handle.directive";
-import {Subscription, take, takeUntil} from "rxjs";
+import {take, takeUntil} from "rxjs";
 import {NgForOf} from "@angular/common";
 import {GridService} from "../services/grid.service";
+import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 
-
+/**
+ * Item component that can be dragged and resized.
+ * This class is mainly responsible for handling the drag and resize events and also for updating the item's position and size.
+ */
 @Component({
   selector: 'ddl-item',
   standalone: true,
@@ -57,26 +61,8 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public resizeMove = output<ItemResizeEvent>();
   public resizeEnd = output<ItemResizeEvent>();
 
-  private _dragging: boolean = false;
-  private _resizing: boolean = false;
-  private resizeType: ResizeType = 'bottom-right';
-
-  public startResize(event: PointerEvent, resizeType: ResizeType): void {
-    this._resizing = true;
-    this.resizeType = resizeType;
-
-    this.resizeStart.emit({
-      item: this.getItem(),
-      event: event,
-      resizeType: resizeType,
-    });
-
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
   @HostListener('pointerdown', ['$event'])
-  protected hostStartDrag(event: PointerEvent) {
+  public hostStartDrag(event: PointerEvent) {
     /**
      * Only start dragging if the left mouse button is pressed.
      * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
@@ -90,52 +76,6 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // TODO: Add debounce to this, so that it doesn't fire too often
-  @HostListener('document:pointermove', ['$event'])
-  protected dragResizeMove(event: PointerEvent) {
-    if (!this._dragging && !this._resizing) {
-      return;
-    }
-
-    if (this._dragging) {
-      this.dragMove.emit({
-        item: this.getItem(),
-        event: event,
-      });
-    } else {
-      this.resizeMove.emit({
-        item: this.getItem(),
-        event: event,
-        resizeType: this.resizeType,
-      });
-    }
-    event.preventDefault();
-  }
-
-  @HostListener('document:pointerup', ['$event'])
-  protected dragResizeEnd(event: PointerEvent) {
-    if (!this._dragging && !this._resizing) {
-      return;
-    }
-
-    if (this._dragging) {
-      this.dragEnd.emit({
-        item: this.getItem(),
-        event: event,
-      });
-    } else {
-      this.resizeEnd.emit({
-        item: this.getItem(),
-        event: event,
-        resizeType: this.resizeType,
-      });
-    }
-    this._dragging = false;
-    this._resizing = false;
-    event.preventDefault();
-  }
-
-  private dragHandleSubscription: Subscription | null = null;
   private dragHandleDragStartSubscriptions: OutputRefSubscription[] = [];
 
   public element: HTMLDivElement;
@@ -143,6 +83,7 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public constructor(
     @Inject(ElementRef) private item: ElementRef<HTMLDivElement>,
     private gridService: GridService,
+    private destroyRef: DestroyRef,
   ) {
     this.registerPropertyEffect('--ddl-item-x', this.x);
     this.registerPropertyEffect('--ddl-item-y', this.y);
@@ -152,12 +93,13 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   }
 
   public ngAfterViewInit(): void {
-    this.dragHandleSubscription = this.dragHandles.changes.subscribe(() => this.registerDragHandles());
+    this.dragHandles.changes.pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(() => this.registerDragHandles());
     this.registerDragHandles();
   }
 
   public ngOnDestroy(): void {
-    this.dragHandleSubscription?.unsubscribe();
     this.dragHandleDragStartSubscriptions.forEach((subscription) => subscription.unsubscribe());
     this.dragHandleDragStartSubscriptions = [];
   }
@@ -179,21 +121,61 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   }
 
   private startDrag(event: PointerEvent): void {
-    this._dragging = true;
+    event.preventDefault();
+
     this.dragStart.emit({
       item: this.getItem(),
       event: event,
     });
-    this.gridService.pointerMove.pipe(
-      takeUntil(this.gridService.pointerEnd),
-    ).subscribe((event: PointerEvent) => {
+
+    this.gridService.pointerMove$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      takeUntil(this.gridService.pointerEnd$),
+    ).subscribe(({event}) => {
       this.dragMove.emit({
         item: this.getItem(),
         event: event,
       });
-    })
-    this.gridService.startDrag(this.getItem(), this);
+    });
+
+    this.gridService.pointerEnd$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      take(1),
+    ).subscribe(({event}) => {
+      this.dragEnd.emit({
+        item: this.getItem(),
+        event: event,
+      });
+    });
+  }
+
+  public startResize(event: PointerEvent, resizeType: ResizeType): void {
     event.preventDefault();
+    event.stopPropagation();
+
+    this.resizeStart.emit({
+      item: this.getItem(),
+      event: event,
+      resizeType: resizeType,
+    });
+
+    this.gridService.pointerMove$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      takeUntil(this.gridService.pointerEnd$),
+    ).subscribe(({event}) => this.resizeMove.emit({
+      item: this.getItem(),
+      event: event,
+      resizeType: resizeType,
+    }))
+
+    this.gridService.pointerEnd$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      take(1),
+    ).subscribe(({event}) => this.resizeEnd.emit({
+      item: this.getItem(),
+      event: event,
+      resizeType: resizeType,
+    }));
   }
 
   private registerPropertyEffect(property: string, signalValue: Signal<any>): void {
@@ -203,11 +185,6 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   }
 
   public getItem(): Item {
-    return new Item(
-      this.id,
-      this.x(),
-      this.y(),
-      this.width(),
-      this.height());
+    return new Item(this.id, this.x(), this.y(), this.width(), this.height());
   }
 }
