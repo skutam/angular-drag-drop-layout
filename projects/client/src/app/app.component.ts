@@ -17,25 +17,30 @@ export class AppComponent {
   public colGap: number = 20;
   public rowGap: number = 20;
 
-  public items: Item[] = [
+  public itemsTop: Item[] = [
     new Item('0', 6, 2, 2, 2),
     new Item('1', 2, 2, 2, 1),
     new Item('2', 11, 3, 1, 2),
   ];
 
+  public itemsBottom: Item[] = [
+    new Item('3', 6, 2, 2, 2),
+    new Item('4', 2, 2, 2, 1),
+  ];
+
   public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom', 'top-right'];
   public dragItems: string[] = ['Item 1', 'Item 2', 'Item 3'];
 
-  public addItem(): void {
-    if (this.items.length === 0) {
-      this.items.push(new Item('0', 1, 1, 1, 1));
+  public addItemTop(): void {
+    if (this.itemsTop.length === 0) {
+      this.itemsTop.push(new Item('0', 1, 1, 1, 1));
     } else {
-      const lastItem = this.items[this.items.length - 1];
+      const lastItem = this.itemsTop[this.itemsTop.length - 1];
       const newItem = lastItem.clone();
       newItem.id = (parseInt(lastItem.id) + 1).toString();
       newItem.x = lastItem.x + 1;
       newItem.y = lastItem.y + 1;
-      this.items.push(newItem);
+      this.itemsTop.push(newItem);
     }
   }
 

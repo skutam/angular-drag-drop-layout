@@ -1,14 +1,13 @@
+import {Item} from "./item/item.definitions";
+
 export class Placeholder {
   private readonly placeholder: HTMLElement;
-  public width: number = 0;
-  public height: number = 0;
-  public x: number = 0;
-  public y: number = 0;
+  private readonly item: Item;
 
   constructor(
-    document: Document,
+    private _document: Document,
   ) {
-    this.placeholder = document.createElement('div');
+    this.placeholder = this._document.createElement('div');
     this.placeholder.style.backgroundColor = '#256';
     this.placeholder.style.position = 'absolute';
     this.placeholder.style.border = '1px dashed #000';
@@ -17,33 +16,50 @@ export class Placeholder {
     this.placeholder.style.pointerEvents = 'none';
     this.placeholder.style.zIndex = '1000';
     this.placeholder.style.opacity = '0.0';
-    document.body.appendChild(this.placeholder);
+    this._document.body.appendChild(this.placeholder);
+
+    this.item = new Item('', 0, 0, 0, 0);
   }
 
-  public createPlaceholder(width: number, height: number, x: number, y: number): void {
+  protected createPlaceholder(width: number, height: number, x: number, y: number): void {
     this.placeholder.style.width = `${width}px`;
     this.placeholder.style.height = `${height}px`;
     this.placeholder.style.left = `${x}px`;
     this.placeholder.style.top = `${y}px`;
     this.placeholder.style.opacity = '0.60';
 
-    this.width = width;
-    this.height = height;
-    this.x = x;
-    this.y = y;
+    this.item.width = width;
+    this.item.height = height;
+    this.item.x = x;
+    this.item.y = y;
+    console.log('Placeholder created', this.item);
   }
 
   public movePlaceholder(x: number, y: number): void {
+    console.log('Moving placeholder', x, y);
     this.placeholder.style.left = `${x}px`;
     this.placeholder.style.top = `${y}px`;
   }
 
   public resizePlaceholder(width: number, height: number): void {
+    console.log('Resizing placeholder', width, height);
     this.placeholder.style.width = `${width}px`;
     this.placeholder.style.height = `${height}px`;
   }
 
-  public destroyPlaceholder(): void {
+  /**
+   * Destroy the placeholder
+   * Handled by the grid service
+   */
+  protected destroyPlaceholder(): void {
     this.placeholder.style.opacity = '0.0';
+    this.item.x = 0;
+    this.item.y = 0;
+    this.item.width = 0;
+    this.item.height = 0;
+  }
+
+  public getItem(): Item {
+    return this.item;
   }
 }

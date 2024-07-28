@@ -1,4 +1,4 @@
-<button (click)="addItem()">Add Item</button>
+<button (click)="addItemTop()">Add Item</button>
 <label> Cols:
   <input type="number" [(ngModel)]="columns" placeholder="cols">
 </label>
@@ -15,21 +15,32 @@
   </label>
 </label>
 
-<ddl-grid [columns]="columns" #grid
+<ddl-grid [columns]="columns" #gridTop class="grid-top"
           [rows]="rows"
           [colGap]="colGap"
           [rowGap]="rowGap"
-          [(items)]="items">
-  <ddl-item *ngFor="let item of items; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
+          [(items)]="itemsTop">
+  <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
     <div ddlDragHandle class="drag-handle">Handle</div>
   </ddl-item>
 </ddl-grid>
 
-<div class="drag-items" ddlDragItems [grids]="[grid]">
+<div class="drag-items" ddlDragItems [grids]="[gridTop, gridBottom]">
   <div ddlDragItem
        class="drag-item"
        [draggable]="i === 0"
        [disabled]="i == 1"
        *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
 </div>
+
+<ddl-grid [columns]="columns" #gridBottom class="grid-bottom"
+          [rows]="rows"
+          [colGap]="colGap"
+          [rowGap]="rowGap"
+          [(items)]="itemsBottom">
+  <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
+    <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
+    <div ddlDragHandle class="drag-handle">Handle</div>
+  </ddl-item>
+</ddl-grid>
