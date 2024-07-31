@@ -1,6 +1,6 @@
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
+  ChangeDetectionStrategy, ChangeDetectorRef,
   Component, ContentChildren, DestroyRef,
   effect,
   ElementRef,
@@ -12,7 +12,6 @@ import {NgForOf} from "@angular/common";
 import {ItemComponent} from "../item/item.component";
 import {getResizeInfo, Item, ResizeType} from "../item/item.definitions";
 import {GridDragItemService} from "../services/grid-drag-item.service";
-import {DragItemDirective} from "../directives/drag-item.directive";
 import {GridEvent, GridRectData, IDragResizeData} from "./grid.definitions";
 import {GridService} from "../services/grid.service";
 import {outputToObservable, takeUntilDestroyed} from "@angular/core/rxjs-interop";
@@ -47,7 +46,6 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   public itemDropped = output<GridEvent>();
 
   private itemComponentSubscriptions: OutputRefSubscription[] = [];
-  private dragItemComponentSubscriptions: OutputRefSubscription[] = [];
 
   /**
    * Determines if the user is dragging an item inside this grid
@@ -59,26 +57,67 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     private gridDragItemService: GridDragItemService,
     private gridService: GridService,
     private destroyRef: DestroyRef,
+    private cdRef: ChangeDetectorRef,
   ) {
     this.registerPropertyEffect('--ddl-grid-columns', this.columns);
     this.registerPropertyEffect('--ddl-grid-rows', this.rows);
     this.registerPropertyEffect('--ddl-grid-col-gap', this.colGap, 'px');
     this.registerPropertyEffect('--ddl-grid-row-gap', this.rowGap, 'px');
 
+    effect(() => {
+      this.items();
+      this.cdRef.detectChanges();
+    });
+
     this.gridDragItemService.registerGrid(this);
 
     outputToObservable(this.dragEnter).pipe(
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(() => {
+    ).subscribe(({item}) => {
       this._dragging = true;
-      console.log('Dragging entered grid', this.id);
+      const {cellWidth, cellHeight} = this.calcGridRectData();
+      const width = item.width * cellWidth + (item.width - 1) * this.colGap();
+      const height = item.height * cellHeight + (item.height - 1) * this.rowGap();
+      this.gridService.resizePlaceholder(width, height);
+
+      const _item = this.items().find((i) => i.id === item.id);
+      if (!_item) {
+        this.items.set([...this.items(), item]);
+      }
     });
 
     outputToObservable(this.dragLeave).pipe(
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(() => {
+    ).subscribe(({draggingItemRect, item}) => {
       this._dragging = false;
-      console.log('Dragging left grid', this.id);
+      this.gridService.resizePlaceholder(draggingItemRect.width, draggingItemRect.height);
+
+      const newItems = this.items().filter((i) => i.id !== item.id);
+      this.items.set(newItems);
+    });
+
+    this.gridService.pointerMove$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      // takeUntil(this.gridService.pointerEnd$),
+      filter(() => this._dragging),
+    ).subscribe(({event, dragResizeData}) => this.dragMove(event, dragResizeData));
+
+    this.gridService.pointerEnd$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      filter(() => this._dragging),
+    ).subscribe(({dragResizeData, event}) => {
+      const dragItem = this.items().find((i) => i.id === 'dragItem');
+      if (dragItem) {
+        const oldItems = this.items().filter((i) => i.id !== 'dragItem');
+        const {x,y} = this.calcItemPositionInGrid(event);
+
+        const newX = clamp(1, this.columns() - (dragItem.width - Math.abs(dragResizeData.itemOffset.x)) + 1, x + dragResizeData.itemOffset.x);
+        const newY = clamp(1, this.rows() - (dragItem.height - Math.abs(dragResizeData.itemOffset.y)) + 1, y + dragResizeData.itemOffset.y);
+
+        const item = new Item(this.getNextItemId(), newX, newY, dragItem.width, dragItem.height, dragItem.data);
+        this.items.set([...oldItems, item]);
+      }
+      this._dragging = false;
     });
   }
 
@@ -87,19 +126,11 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(() => this.updateItemComponents());
     this.updateItemComponents();
-
-    this.gridDragItemService.getGridItems(this).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe((items) => {
-      this.updateItemDirectiveComponents(items);
-    });
   }
 
   public ngOnDestroy(): void {
     this.itemComponentSubscriptions.forEach((subscription) => subscription.unsubscribe());
     this.itemComponentSubscriptions = [];
-    this.dragItemComponentSubscriptions.forEach((subscription) => subscription.unsubscribe());
-    this.dragItemComponentSubscriptions = [];
     this.gridDragItemService.unregisterGrid(this);
   }
 
@@ -107,30 +138,6 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       this.grid.nativeElement.style.setProperty(property, signalValue().toString() + append);
     });
-  }
-
-  private updateItemDirectiveComponents(items: DragItemDirective[]): void {
-    this.dragItemComponentSubscriptions.forEach((subscription) => subscription.unsubscribe());
-    this.dragItemComponentSubscriptions = [];
-
-    items.forEach((item) => {
-      this.dragItemComponentSubscriptions.push(
-        item.dragStart.subscribe((event) => this.dragStartItem(event, item)),
-        item.dragMove.subscribe((event) => this.dragMoveItem(event, item)),
-        item.dragEnd.subscribe((event) => this.dragEndItem(event, item)),
-      );
-    });
-  }
-
-  private dragStartItem(event: PointerEvent, item: DragItemDirective): void {
-    console.log('drag start item', event, item);
-    // this.gridService.startDrag(null, item.getItem(), null, event);
-  }
-
-  private dragMoveItem(event: PointerEvent, item: DragItemDirective): void {
-  }
-
-  private dragEndItem(event: PointerEvent, item: DragItemDirective): void {
   }
 
   /**
@@ -152,7 +159,14 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
       this.itemComponentSubscriptions.push(
         // Register drag events
-        item.dragStart.subscribe(({event}) => this.dragStart(this, event, item)),
+        // TODO: When dragging outside the window, the scroll position is not taken into account
+        item.dragStart.subscribe(({event}) => {
+          const itemPosInGrid = this.calcItemPositionInGrid(event);
+          this.gridService.startDrag(this, item.getItem(), item, event,{
+            x: item.x() - itemPosInGrid.x,
+            y: item.y() - itemPosInGrid.y,
+          });
+        }),
         // Register resize events
         item.resizeStart.subscribe(({resizeType, event}) => this.resizeStart(item, event, resizeType)),
       );
@@ -160,38 +174,14 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Starts dragging an item
-   */
-  // TODO: When dragging outside the window, the scroll position is not taken into account
-  private dragStart(fromGrid: GridComponent, event: PointerEvent, item: ItemComponent): void {
-    const itemPosInGrid = this.calcItemPositionInGrid(event);
-
-    this.gridService.startDrag(fromGrid, item.getItem(), item, event,{
-      x: item.x() - itemPosInGrid.x,
-      y: item.y() - itemPosInGrid.y,
-    });
-
-    this.gridService.pointerMove$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      takeUntil(this.gridService.pointerEnd$),
-      filter(() => this._dragging),
-    ).subscribe(({event, dragResizeData}) => this.dragMove(event, item, dragResizeData));
-
-    this.gridService.pointerEnd$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      filter(() => this._dragging),
-      take(1),
-    ).subscribe(() => {
-      console.log('Dragging ended inside grid', this.id);
-      this.items.set(this.itemComponents.map((item) => item.getItem()));
-      this._dragging = false;
-    });
-  }
-
-  /**
    * Moves the item while dragging
    */
-  private dragMove(event: PointerEvent, item: ItemComponent, dragResizeData: IDragResizeData): void {
+  private dragMove(event: PointerEvent, dragResizeData: IDragResizeData): void {
+    const item = this.itemComponents.find((item) => item.id === dragResizeData.item.id);
+    if (!item) {
+      return;
+    }
+
     const {x,y} = this.calcItemPositionInGrid(event);
 
     const newX = clamp(1, this.columns() - (item.width() - Math.abs(dragResizeData.itemOffset.x)) + 1, x + dragResizeData.itemOffset.x);
@@ -339,6 +329,15 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     if (position <= cellSize + gap / 2) return 1;                                     // First square
     if (position >= (cellSize + gap) * (max - 1) - gap / 2) return max;               // Last square
     return Math.floor((position - (cellSize + gap / 2)) / (cellSize + gap)) + 2;   // Middle square
+  }
+
+  /**
+   * Get the next item id
+   */
+  private getNextItemId(): string {
+    return (this.items().map(i => parseInt(i.id))
+      .filter(i => !Number.isNaN(i))
+      .reduce((a, b) => Math.max(a, b), 0) + 1).toString();
   }
 
   /**

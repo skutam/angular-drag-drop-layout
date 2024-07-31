@@ -6,6 +6,7 @@ export interface GridEvent {
   grid: GridComponent;
   event: PointerEvent;
   item: Item;
+  draggingItemRect: DOMRect;
 }
 
 export interface GridRectData {
@@ -21,6 +22,7 @@ export interface IDragResizeData {
   fromGrid: GridComponent | null;
   item: Item;
   itemComponent: ItemComponent | null;
+  dragItemElement: HTMLElement | null;
   dragging: boolean; // Differentiate between dragging and resizing
   previousGrid: GridComponent | null; // The grid the item was previously in the last pinter move check
   currentGrid: GridComponent | null;  // The grid the item is currently in, used to trigger dragEnter and dragLeave events

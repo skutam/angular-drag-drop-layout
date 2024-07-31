@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import {GridComponent} from "../grid/grid.component";
 import {DragItemDirective} from "../directives/drag-item.directive";
-import {BehaviorSubject, Observable} from "rxjs";
+import {BehaviorSubject} from "rxjs";
 
 @Injectable({
   providedIn: 'root'
@@ -10,13 +10,6 @@ export class GridDragItemService {
   private grids = new Map<GridComponent, BehaviorSubject<DragItemDirective[]>>();
 
   constructor() { }
-
-  public getGridItems(grid: GridComponent): Observable<DragItemDirective[]> {
-    if (!this.grids.has(grid)) {
-      throw new Error('Grid not registered');
-    }
-    return this.grids.get(grid)!;
-  }
 
   public getGrids(): GridComponent[] {
     return Array.from(this.grids.keys());

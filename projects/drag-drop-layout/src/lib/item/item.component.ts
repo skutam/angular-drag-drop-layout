@@ -49,6 +49,7 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public y = signal(0);
   public width = signal(1);
   public height = signal(1);
+  public data = signal<any>(undefined);
 
   // Inputs
   public resizeTypes: InputSignal<ResizeType[]> = input(['bottom-left'] as ResizeType[]);
@@ -185,6 +186,6 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   }
 
   public getItem(): Item {
-    return new Item(this.id, this.x(), this.y(), this.width(), this.height());
+    return new Item(this.id, this.x(), this.y(), this.width(), this.height(), this.data());
   }
 }
