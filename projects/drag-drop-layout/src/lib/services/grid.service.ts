@@ -2,10 +2,10 @@ import {DestroyRef, Inject, Injectable, NgZone} from '@angular/core';
 import {Item} from "../item/item.definitions";
 import {ItemComponent} from "../item/item.component";
 import {
+  auditTime,
   filter,
   fromEvent,
   Observable,
-  sampleTime,
   Subject,
 } from "rxjs";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
@@ -40,13 +40,13 @@ export class GridService extends Placeholder {
 
     this.ngZone.runOutsideAngular(() => {
       fromEvent<PointerEvent>(this.document, 'pointermove').pipe(
-        sampleTime(10),
+        auditTime(10),
         takeUntilDestroyed(this.destroyRef),
         filter(() => this.dragResizeData !== null),
       ).subscribe((event: PointerEvent) => {
         // Calculate movement only when dragging, resize handles it on its own
         if (this.dragResizeData!.dragging) {
-          this.handleGridPointerMove(event);
+          this.handleGridEnterLeaveEvents(event);
 
           const newDeltaX = event.clientX + this.dragResizeData!.dragOffset.x + window.scrollX;
           const newDeltaY = event.clientY + this.dragResizeData!.dragOffset.y + window.scrollY;
@@ -63,20 +63,19 @@ export class GridService extends Placeholder {
         takeUntilDestroyed(this.destroyRef),
         filter(() => this.dragResizeData !== null),
       ).subscribe((event: PointerEvent) => {
-        this.dragResizeData = null;
         this.destroyPlaceholder();
         this.pointerEndSubject.next({
           event,
           dragResizeData: this.dragResizeData!,
         });
+        this.dragResizeData = null;
       });
     });
   }
 
   public startDrag(fromGrid: GridComponent | null, item: Item,
                    itemComponent: ItemComponent, event: PointerEvent,
-                   itemOffset: {x: number, y: number}): void {
-    console.log('Start drag', item);
+                   itemOffset: { x: number, y: number }): void {
     const {width, height, x, y} = itemComponent.element.getBoundingClientRect();
     this.createPlaceholder(width, height, x + window.scrollX, y + window.scrollY);
 
@@ -84,6 +83,7 @@ export class GridService extends Placeholder {
       fromGrid,
       item,
       itemComponent,
+      dragItemElement: null,
       dragging: true,
       currentGrid: null,
       previousGrid: null,
@@ -95,15 +95,22 @@ export class GridService extends Placeholder {
     };
   }
 
-  public startItemDrag(item: Item, event: PointerEvent, dragOffset: {x: number, y: number}) {
+  public startItemDrag(item: Item, element: HTMLElement, event: PointerEvent) {
+    const {width, height, x, y} = element.getBoundingClientRect();
+    this.createPlaceholder(width, height, x + window.scrollX, y + window.scrollY);
+
     this.dragResizeData = {
       fromGrid: null,
       item,
+      dragItemElement: element,
       itemComponent: null,
       dragging: true,
       currentGrid: null,
       previousGrid: null,
-      dragOffset,
+      dragOffset: {
+        x: x - event.clientX,
+        y: y - event.clientY,
+      },
       itemOffset: {
         x: 0,
         y: 0,
@@ -119,6 +126,7 @@ export class GridService extends Placeholder {
       fromGrid: null,
       item,
       itemComponent,
+      dragItemElement: null,
       dragging: false,
       currentGrid: null,
       previousGrid: null,
@@ -138,32 +146,30 @@ export class GridService extends Placeholder {
    * If the item entered a new grid, the dragEnter event is emitted on the new grid.
    * If the item left the current grid, the dragLeave event is emitted on the current grid.
    */
-  private handleGridPointerMove(event: PointerEvent): void {
-    if (this.dragResizeData === null) {
-      return;
-    }
-
+  private handleGridEnterLeaveEvents(event: PointerEvent): void {
     // Check if the item being dragged is still inside the same grid
-    if (this.dragResizeData.currentGrid !== null) {
-      if (this.dragResizeData.currentGrid.eventInsideGrid(event)) {
+    if (this.dragResizeData!.currentGrid !== null) {
+      if (this.dragResizeData!.currentGrid.eventInsideGrid(event)) {
         return;
       }
     }
 
     // Not inside the same grid, notify previous grid
-    this.dragResizeData.previousGrid = this.dragResizeData.currentGrid;
-    this.dragResizeData.previousGrid?.dragLeave.emit({
-      grid: this.dragResizeData.previousGrid,
+    this.dragResizeData!.previousGrid = this.dragResizeData!.currentGrid;
+    this.dragResizeData!.previousGrid?.dragLeave.emit({
+      grid: this.dragResizeData!.previousGrid,
       event,
-      item: this.dragResizeData.item,
+      item: this.dragResizeData!.item,
+      draggingItemRect: (this.dragResizeData!.dragItemElement || this.dragResizeData!.itemComponent?.element)!.getBoundingClientRect()
     });
 
     // Find the new grid and notify it
-    this.dragResizeData.currentGrid = this.gridDragItemService.getGrids().find((grid) => grid.eventInsideGrid(event)) || null;
-    this.dragResizeData.currentGrid?.dragEnter.emit({
-      grid: this.dragResizeData.currentGrid,
+    this.dragResizeData!.currentGrid = this.gridDragItemService.getGrids().find((grid) => grid.eventInsideGrid(event)) || null;
+    this.dragResizeData!.currentGrid?.dragEnter.emit({
+      grid: this.dragResizeData!.currentGrid,
       event,
-      item: this.dragResizeData.item,
+      item: this.dragResizeData!.item,
+      draggingItemRect: (this.dragResizeData!.dragItemElement || this.dragResizeData!.itemComponent?.element)!.getBoundingClientRect()
     });
   }
 }

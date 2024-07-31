@@ -44,11 +44,7 @@ export class DragItemDirective implements OnDestroy {
     event.preventDefault();
 
     this.dragStart.emit(event);
-    const {x, y} = this.dragItem.nativeElement.getBoundingClientRect();
-    this.gridService.startItemDrag(this.getItem(), event, {
-      x: x - event.clientX,
-      y: y - event.clientY,
-    });
+    this.gridService.startItemDrag(this.getItem(), this.dragItem.nativeElement, event);
 
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
@@ -73,6 +69,6 @@ export class DragItemDirective implements OnDestroy {
   }
 
   public getItem(): Item {
-    return new Item(this.id, 0, 0, this.width(), this.height());
+    return new Item('dragItem', 0, 0, this.width(), this.height(), this.dragData());
   }
 }

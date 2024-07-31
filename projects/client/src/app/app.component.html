@@ -22,6 +22,7 @@
           [(items)]="itemsTop">
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
+    <span class="item-info-data">{{item.data}}</span>
     <div ddlDragHandle class="drag-handle">Handle</div>
   </ddl-item>
 </ddl-grid>
@@ -29,8 +30,11 @@
 <div class="drag-items" ddlDragItems [grids]="[gridTop, gridBottom]">
   <div ddlDragItem
        class="drag-item"
-       [draggable]="i === 0"
+       [draggable]="true"
        [disabled]="i == 1"
+       [width]="2"
+       [height]="2"
+       [dragData]="i"
        *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
 </div>
 
@@ -41,6 +45,7 @@
           [(items)]="itemsBottom">
   <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
+    <span class="item-info-data">{{item.data}}</span>
     <div ddlDragHandle class="drag-handle">Handle</div>
   </ddl-item>
 </ddl-grid>

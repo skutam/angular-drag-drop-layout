@@ -18,14 +18,14 @@ export class AppComponent {
   public rowGap: number = 20;
 
   public itemsTop: Item[] = [
-    new Item('0', 6, 2, 2, 2),
-    new Item('1', 2, 2, 2, 1),
-    new Item('2', 11, 3, 1, 2),
+    new Item('0', 6, 2, 2, 2, 'Item 0 | TOP'),
+    new Item('1', 2, 2, 2, 1, 'Item 1 | TOP'),
+    new Item('2', 11, 3, 1, 2, 'Item 2 | TOP'),
   ];
 
   public itemsBottom: Item[] = [
-    new Item('3', 6, 2, 2, 2),
-    new Item('4', 2, 2, 2, 1),
+    new Item('3', 6, 2, 2, 2, 'Item 3 | BOTTOM'),
+    new Item('4', 2, 2, 2, 1, 'Item 4 | BOTTOM'),
   ];
 
   public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom', 'top-right'];

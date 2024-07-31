@@ -38,6 +38,7 @@ export class Item {
   public height: number = 1;
   public x: number = 0;
   public y: number = 0;
+  public data: any = undefined;
 
   public constructor(
     id: string,
@@ -45,15 +46,16 @@ export class Item {
     y: number,
     width: number,
     height: number,
-  ) {
+    data: any = undefined) {
     this.id = id;
     this.width = width;
     this.height = height;
     this.x = x;
     this.y = y;
+    this.data = data;
   }
 
   public clone(): Item {
-    return new Item(this.id, this.x, this.y, this.width, this.height);
+    return new Item(this.id, this.x, this.y, this.width, this.height, this.data);
   }
 }

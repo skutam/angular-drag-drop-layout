@@ -32,17 +32,14 @@ export class Placeholder {
     this.item.height = height;
     this.item.x = x;
     this.item.y = y;
-    console.log('Placeholder created', this.item);
   }
 
   public movePlaceholder(x: number, y: number): void {
-    console.log('Moving placeholder', x, y);
     this.placeholder.style.left = `${x}px`;
     this.placeholder.style.top = `${y}px`;
   }
 
   public resizePlaceholder(width: number, height: number): void {
-    console.log('Resizing placeholder', width, height);
     this.placeholder.style.width = `${width}px`;
     this.placeholder.style.height = `${height}px`;
   }
