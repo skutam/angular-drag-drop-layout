@@ -8,7 +8,6 @@ import {GridService} from "./services/grid.service";
 import {GridDragItemService} from "./services/grid-drag-item.service";
 
 
-
 @NgModule({
   imports: [
     GridComponent,
@@ -29,4 +28,4 @@ import {GridDragItemService} from "./services/grid-drag-item.service";
     GridDragItemService,
   ]
 })
-export class DdlModule { }
+export class DragDropLayoutModule { }

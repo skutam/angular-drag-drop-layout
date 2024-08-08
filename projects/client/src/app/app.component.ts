@@ -4,7 +4,7 @@ import {
   Item,
   itemTrackBy,
   ResizeType,
-  DdlModule
+  DragDropLayoutModule
 } from '@skutam/drag-drop-layout';
 import {NgForOf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
@@ -12,7 +12,7 @@ import {FormsModule} from "@angular/forms";
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NgForOf, FormsModule, DdlModule],
+  imports: [RouterOutlet, NgForOf, FormsModule, DragDropLayoutModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.less'
 })
