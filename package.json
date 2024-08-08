@@ -13,7 +13,6 @@
     "test": "ng test",
     "serve:ssr:client": "node dist/client/server/server.mjs"
   },
-  "private": true,
   "dependencies": {
     "@angular/animations": "^18.0.0",
     "@angular/common": "^18.0.0",

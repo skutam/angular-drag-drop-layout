@@ -7,3 +7,4 @@ export * from './lib/item/item.definitions';
 export * from './lib/directives/drag-handle.directive';
 export * from './lib/directives/drag-item.directive';
 export * from './lib/directives/drag-items.directive';
+export * from './lib/ddl.module';
