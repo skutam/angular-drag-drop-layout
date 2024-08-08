@@ -5,7 +5,7 @@ import {
   itemTrackBy,
   ResizeType,
   DdlModule
-} from 'drag-drop-layout';
+} from '@skutam/drag-drop-layout';
 import {NgForOf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 
