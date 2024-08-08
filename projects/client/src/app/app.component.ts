@@ -1,13 +1,18 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import {GridComponent, ItemComponent, Item, itemTrackBy, DragHandleDirective, DragItemDirective, DragItemsDirective, ResizeType} from 'drag-drop-layout';
+import {
+  Item,
+  itemTrackBy,
+  ResizeType,
+  DdlModule
+} from 'drag-drop-layout';
 import {NgForOf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NgForOf, FormsModule, GridComponent, ItemComponent, DragHandleDirective, DragItemDirective, DragItemsDirective],
+  imports: [RouterOutlet, NgForOf, FormsModule, DdlModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.less'
 })

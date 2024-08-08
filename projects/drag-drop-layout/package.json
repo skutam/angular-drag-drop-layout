@@ -1,6 +1,15 @@
 {
-  "name": "drag-drop-layout",
+  "name": "@skutam/drag-drop-layout",
+  "description": "Angular library that uses CSS grid for dragging and resizing elements.",
   "version": "0.0.1",
+  "keywords": [
+    "angular",
+    "drag",
+    "drop",
+    "layout",
+    "grid",
+    "resize"
+  ],
   "peerDependencies": {
     "@angular/common": "^18.0.0",
     "@angular/core": "^18.0.0"

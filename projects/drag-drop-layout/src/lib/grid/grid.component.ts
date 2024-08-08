@@ -34,11 +34,11 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   @ContentChildren(ItemComponent, {descendants: true}) private itemComponents!: QueryList<ItemComponent>;
 
   // Inputs
-  public columns = input(12);
-  public rows = input(3);
-  public colGap= input(8);
-  public rowGap = input(8);
-  public items = model([] as Item[]);
+  public columns = input<number>(12);
+  public rows = input<number>(3);
+  public colGap= input<number>(8);
+  public rowGap = input<number>(8);
+  public items = model<Item[]>([] as Item[]);
 
   // Outputs
   public dragEnter = output<GridEvent>();
