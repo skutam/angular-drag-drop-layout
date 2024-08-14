@@ -7,7 +7,6 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 
 @Directive({
   selector: '[ddlDragItem]',
-  standalone: true,
   host: {
     '[draggable]': 'draggable()',
     '[disabled]': 'disabled()',

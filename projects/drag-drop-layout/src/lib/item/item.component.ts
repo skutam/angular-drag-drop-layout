@@ -19,7 +19,6 @@ import {
 import {Item, ItemDragEvent, ItemResizeEvent, ResizeType} from "./item.definitions";
 import {DragHandleDirective} from "../directives/drag-handle.directive";
 import {take, takeUntil} from "rxjs";
-import {NgForOf} from "@angular/common";
 import {GridService} from "../services/grid.service";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 
@@ -29,10 +28,6 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
  */
 @Component({
   selector: 'ddl-item',
-  standalone: true,
-  imports: [
-    NgForOf
-  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './item.component.html',
   styleUrl: './item.component.css',

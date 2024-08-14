@@ -1,14 +1,12 @@
 import {
   AfterViewInit,
   ChangeDetectionStrategy, ChangeDetectorRef,
-  Component, ContentChildren, DestroyRef,
-  effect,
+  Component, ContentChildren, DestroyRef, effect,
   ElementRef,
   Inject,
-  input,
-  InputSignal, model, OnDestroy, output, OutputRefSubscription, QueryList,
+  input, InputSignal,
+  model, OnDestroy, output, OutputRefSubscription, QueryList,
 } from '@angular/core';
-import {NgForOf} from "@angular/common";
 import {ItemComponent} from "../item/item.component";
 import {getResizeInfo, Item, ResizeType} from "../item/item.definitions";
 import {GridDragItemService} from "../services/grid-drag-item.service";
@@ -18,11 +16,8 @@ import {outputToObservable, takeUntilDestroyed} from "@angular/core/rxjs-interop
 import {filter, take, takeUntil} from "rxjs";
 import {clamp} from "../util";
 
-
 @Component({
   selector: 'ddl-grid',
-  standalone: true,
-  imports: [ItemComponent, NgForOf],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './grid.component.html',
   styleUrl: './grid.component.css',

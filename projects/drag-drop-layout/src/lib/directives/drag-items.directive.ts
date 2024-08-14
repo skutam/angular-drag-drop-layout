@@ -13,7 +13,6 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 
 @Directive({
   selector: '[ddlDragItems]',
-  standalone: true
 })
 export class DragItemsDirective implements AfterViewInit {
   @ContentChildren(DragItemDirective, {descendants: true}) private itemDirectives!: QueryList<DragItemDirective>;
