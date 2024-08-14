@@ -2,7 +2,6 @@ import {Directive, HostListener, output} from '@angular/core';
 
 @Directive({
   selector: '[ddlDragHandle]',
-  standalone: true,
 })
 export class DragHandleDirective {
   public dragStart = output<PointerEvent>();

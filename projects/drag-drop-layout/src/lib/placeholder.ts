@@ -1,12 +1,10 @@
 import {Item} from "./item/item.definitions";
 
 export class Placeholder {
-  private readonly placeholder: HTMLElement;
-  private readonly item: Item;
+  private readonly placeholder!: HTMLElement;
+  private readonly item: Item = new Item('', 0, 0, 0, 0);
 
-  constructor(
-    private _document: Document,
-  ) {
+  constructor(private _document: Document) {
     this.placeholder = this._document.createElement('div');
     this.placeholder.style.backgroundColor = '#256';
     this.placeholder.style.position = 'absolute';
@@ -17,8 +15,6 @@ export class Placeholder {
     this.placeholder.style.zIndex = '1000';
     this.placeholder.style.opacity = '0.0';
     this._document.body.appendChild(this.placeholder);
-
-    this.item = new Item('', 0, 0, 0, 0);
   }
 
   protected createPlaceholder(width: number, height: number, x: number, y: number): void {

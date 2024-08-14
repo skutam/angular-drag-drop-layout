@@ -6,10 +6,14 @@ import {DragItemDirective} from "./directives/drag-item.directive";
 import {DragItemsDirective} from "./directives/drag-items.directive";
 import {GridService} from "./services/grid.service";
 import {GridDragItemService} from "./services/grid-drag-item.service";
+import {CommonModule} from "@angular/common";
 
 
 @NgModule({
   imports: [
+    CommonModule,
+  ],
+  declarations: [
     GridComponent,
     ItemComponent,
     DragHandleDirective,
@@ -26,6 +30,6 @@ import {GridDragItemService} from "./services/grid-drag-item.service";
   providers: [
     GridService,
     GridDragItemService,
-  ]
+  ],
 })
 export class DragDropLayoutModule { }

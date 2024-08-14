@@ -9,8 +9,6 @@ import {BehaviorSubject} from "rxjs";
 export class GridDragItemService {
   private grids = new Map<GridComponent, BehaviorSubject<DragItemDirective[]>>();
 
-  constructor() { }
-
   public getGrids(): GridComponent[] {
     return Array.from(this.grids.keys());
   }
