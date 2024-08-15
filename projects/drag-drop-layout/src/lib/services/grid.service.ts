@@ -157,7 +157,6 @@ export class GridService extends Placeholder {
     // Not inside the same grid, notify previous grid
     this.dragResizeData!.previousGrid = this.dragResizeData!.currentGrid;
     this.dragResizeData!.previousGrid?.dragLeave.emit({
-      grid: this.dragResizeData!.previousGrid,
       event,
       item: this.dragResizeData!.item,
       draggingItemRect: (this.dragResizeData!.dragItemElement || this.dragResizeData!.itemComponent?.element)!.getBoundingClientRect()
@@ -166,7 +165,6 @@ export class GridService extends Placeholder {
     // Find the new grid and notify it
     this.dragResizeData!.currentGrid = this.gridDragItemService.getGrids().find((grid) => grid.eventInsideGrid(event)) || null;
     this.dragResizeData!.currentGrid?.dragEnter.emit({
-      grid: this.dragResizeData!.currentGrid,
       event,
       item: this.dragResizeData!.item,
       draggingItemRect: (this.dragResizeData!.dragItemElement || this.dragResizeData!.itemComponent?.element)!.getBoundingClientRect()

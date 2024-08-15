@@ -1,13 +1,14 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import {
-  Item,
   itemTrackBy,
   ResizeType,
-  DragDropLayoutModule
+  DragDropLayoutModule,
+  Item
 } from '@skutam/drag-drop-layout';
 import {NgForOf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
+import {GridItemDroppedEvent} from "../../../drag-drop-layout/src/lib/grid/grid.definitions";
 
 @Component({
   selector: 'app-root',
@@ -47,6 +48,10 @@ export class AppComponent {
       newItem.y = lastItem.y + 1;
       this.itemsTop.push(newItem);
     }
+  }
+
+  public itemDropped(event: GridItemDroppedEvent): void {
+    console.log(event);
   }
 
   protected toggleResizeType(resizeType: ResizeType): void {
