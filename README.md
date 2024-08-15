@@ -10,6 +10,7 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 - Angular signals
 - Responsive css grid layout
 - Draggable items
+- Drag drop into and between grids
 - Custom drag handles
 
 ## Installation
@@ -58,6 +59,7 @@ export class AppModule { }
           [rows]="rows"
           [colGap]="colGap"
           [rowGap]="rowGap"
+          (itemDropped)="itemDropped($event)"
           [(items)]="items">
   <ddl-item *ngFor="let item of items; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
@@ -71,7 +73,7 @@ export class AppModule { }
 
 ```typescript
 import { Component } from '@angular/core';
-import { Item, ResizeType } from '@skutam/drag-drop-layout';
+import { Item, ResizeType, GridItemDroppedEvent } from '@skutam/drag-drop-layout';
 
 @Component({
   selector: 'app-root',
@@ -93,14 +95,14 @@ export class AppComponent {
   public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom', 'top-right'];
   public dragItems: string[] = ['Item 1', 'Item 2', 'Item 3'];
 
+  public itemDropped(event: GridItemDroppedEvent): void {
+    console.log(event);
+  }
+
   protected readonly itemTrackBy = itemTrackBy;
   protected readonly RESIZE_TYPES: ResizeType[] = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
 }
 ```
-
-## API
-
-TODO: Add API documentation
 
 ## Development
 

@@ -10,7 +10,7 @@ import {
 import {ItemComponent} from "../item/item.component";
 import {getResizeInfo, Item, ResizeType} from "../item/item.definitions";
 import {GridDragItemService} from "../services/grid-drag-item.service";
-import {GridEvent, GridRectData, IDragResizeData} from "./grid.definitions";
+import {GridEvent, GridItemDroppedEvent, GridRectData, IDragResizeData} from "./grid.definitions";
 import {GridService} from "../services/grid.service";
 import {outputToObservable, takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {filter, take, takeUntil} from "rxjs";
@@ -38,7 +38,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   // Outputs
   public dragEnter = output<GridEvent>();
   public dragLeave = output<GridEvent>();
-  public itemDropped = output<GridEvent>();
+  public itemDropped = output<GridItemDroppedEvent>();
 
   private itemComponentSubscriptions: OutputRefSubscription[] = [];
 
@@ -111,6 +111,10 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
         const item = new Item(this.getNextItemId(), newX, newY, dragItem.width, dragItem.height, dragItem.data);
         this.items.set([...oldItems, item]);
+        this.itemDropped.emit({
+          event,
+          item,
+        });
       }
       this._dragging = false;
     });
@@ -195,7 +199,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event, dragResizeData}) => this.resizeMove(event, item, resizeType, initItemRect, initResizeItem));
+    ).subscribe(({event}) => this.resizeMove(event, item, resizeType, initItemRect, initResizeItem));
 
     this.gridService.pointerEnd$.pipe(
       takeUntilDestroyed(this.destroyRef),

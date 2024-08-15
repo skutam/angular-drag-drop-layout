@@ -19,6 +19,7 @@
           [rows]="rows"
           [colGap]="colGap"
           [rowGap]="rowGap"
+          (itemDropped)="itemDropped($event)"
           [(items)]="itemsTop">
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>

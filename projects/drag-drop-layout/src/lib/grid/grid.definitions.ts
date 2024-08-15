@@ -3,10 +3,14 @@ import {Item} from "../item/item.definitions";
 import {ItemComponent} from "../item/item.component";
 
 export interface GridEvent {
-  grid: GridComponent;
   event: PointerEvent;
   item: Item;
   draggingItemRect: DOMRect;
+}
+
+export interface GridItemDroppedEvent {
+  event: PointerEvent;
+  item: Item;
 }
 
 export interface GridRectData {
