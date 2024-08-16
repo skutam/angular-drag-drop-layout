@@ -75,10 +75,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       const height = item.height * cellHeight + (item.height - 1) * this.rowGap();
       this.gridService.resizePlaceholder(width, height);
 
-      const _item = this.items().find((i) => i.id === item.id);
-      if (!_item) {
-        this.items.set([...this.items(), item]);
-      }
+      // Update items when we are dragging new item into the grid
+      this.items.update(items => items.find(i => i.id === item.id) ? items : [...items, item]);
     });
 
     outputToObservable(this.dragLeave).pipe(
@@ -87,13 +85,12 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       this._dragging = false;
       this.gridService.resizePlaceholder(draggingItemRect.width, draggingItemRect.height);
 
-      const newItems = this.items().filter((i) => i.id !== item.id);
-      this.items.set(newItems);
+      // Update items by removing the currently dragged item from them
+      this.items.update(items => items.filter(i => i.id !== item.id));
     });
 
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
-      // takeUntil(this.gridService.pointerEnd$),
       filter(() => this._dragging),
     ).subscribe(({event, dragResizeData}) => this.dragMove(event, dragResizeData));
 
@@ -102,6 +99,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       filter(() => this._dragging),
     ).subscribe(({dragResizeData, event}) => {
       const dragItem = this.items().find((i) => i.id === 'dragItem');
+
+      // Dragging new ddl-item into the grid
       if (dragItem) {
         const oldItems = this.items().filter((i) => i.id !== 'dragItem');
         const {x,y} = this.calcItemPositionInGrid(event);
@@ -115,6 +114,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
           event,
           item,
         });
+      } else {
+        this.items.set(this.itemComponents.map(c => c.getItem()));
       }
       this._dragging = false;
     });
