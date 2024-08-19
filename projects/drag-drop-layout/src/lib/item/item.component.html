@@ -1,16 +1,6 @@
-<ng-content></ng-content>
-
+<!-- Resize handles must be a-top the ng-content so when some button is added it is not overlapped by the resize handle.  -->
 <div *ngFor="let resizeType of resizeTypes()"
      class="resize-handle"
      [class]="resizeType"
      (pointerdown)="startResize($event, resizeType)"></div>
-<!--
-<div class="resize-handle top-left" (pointerdown)="startResize($event, true, true)"></div>
-<div class="resize-handle top" (pointerdown)="startResize($event, false, true)"></div>
-<div class="resize-handle top-right" (pointerdown)="startResize($event, true, true)"></div>
-<div class="resize-handle right" (pointerdown)="startResize($event, true, false)"></div>
-<div class="resize-handle bottom-right" (pointerdown)="startResize($event, true, true)"></div>
-<div class="resize-handle bottom" (pointerdown)="startResize($event, false, true)"></div>
-<div class="resize-handle bottom-left" (pointerdown)="startResize($event, true, true)"></div>
-<div class="resize-handle left" (pointerdown)="startResize($event, true, false)"></div>
--->
+<ng-content></ng-content>

@@ -67,9 +67,17 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    if (this.dragHandles.length === 0) {
-      this.startDrag(event);
+    // When there are no drag handles, the whole item can be dragged.
+    if (this.dragHandles.length !== 0) {
+      return;
     }
+
+    // Check if the event target is the element itself, not a child element.
+    if (event.target !== this.item.nativeElement) {
+      return;
+    }
+
+    this.startDrag(event);
   }
 
   private dragHandleDragStartSubscriptions: OutputRefSubscription[] = [];
