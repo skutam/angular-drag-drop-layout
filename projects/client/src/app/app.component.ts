@@ -6,14 +6,14 @@ import {
   DragDropLayoutModule,
   Item
 } from '@skutam/drag-drop-layout';
-import {NgForOf} from "@angular/common";
+import {NgForOf, NgIf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {GridItemDroppedEvent} from "../../../drag-drop-layout/src/lib/grid/grid.definitions";
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NgForOf, FormsModule, DragDropLayoutModule],
+  imports: [RouterOutlet, NgForOf, FormsModule, DragDropLayoutModule, NgIf],
   templateUrl: './app.component.html',
   styleUrl: './app.component.less'
 })
@@ -22,6 +22,8 @@ export class AppComponent {
   public rows: number = 4;
   public colGap: number = 20;
   public rowGap: number = 20;
+
+  public showRemoveItemButton: boolean = true;
 
   public itemsTop: Item[] = [
     new Item('0', 6, 2, 2, 2, 'Item 0 | TOP'),
@@ -34,7 +36,7 @@ export class AppComponent {
     new Item('4', 2, 2, 2, 1, 'Item 4 | BOTTOM'),
   ];
 
-  public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom', 'top-right'];
+  public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom'];
   public dragItems: string[] = ['Item 1', 'Item 2', 'Item 3'];
 
   public addItemTop(): void {
@@ -48,6 +50,14 @@ export class AppComponent {
       newItem.y = lastItem.y + 1;
       this.itemsTop.push(newItem);
     }
+  }
+
+  public removeItemTop(id: string): void {
+    this.itemsTop = this.itemsTop.filter((item) => item.id !== id);
+  }
+
+  public removeItemBottom(id: string): void {
+    this.itemsBottom = this.itemsBottom.filter((item) => item.id !== id);
   }
 
   public itemDropped(event: GridItemDroppedEvent): void {

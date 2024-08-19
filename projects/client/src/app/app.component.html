@@ -15,6 +15,10 @@
   </label>
 </label>
 
+<label>
+  <input type="checkbox" [(ngModel)]="showRemoveItemButton"> Show remove button
+</label>
+
 <ddl-grid [columns]="columns" #gridTop class="grid-top"
           [rows]="rows"
           [colGap]="colGap"
@@ -24,6 +28,7 @@
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
     <span class="item-info-data">{{item.data}}</span>
+    <button *ngIf="showRemoveItemButton" class="remove-item-btn" (click)="removeItemTop(item.id)">x</button>
     <div ddlDragHandle class="drag-handle">Handle</div>
   </ddl-item>
 </ddl-grid>
@@ -47,6 +52,7 @@
   <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
     <span class="item-info-data">{{item.data}}</span>
+    <button *ngIf="showRemoveItemButton" class="remove-item-btn" (click)="removeItemBottom(item.id)">x</button>
     <div ddlDragHandle class="drag-handle">Handle</div>
   </ddl-item>
 </ddl-grid>
