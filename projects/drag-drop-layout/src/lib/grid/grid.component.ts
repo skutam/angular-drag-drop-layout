@@ -23,8 +23,7 @@ import {clamp} from "../util";
   styleUrl: './grid.component.css',
 })
 export class GridComponent implements AfterViewInit, OnDestroy {
-  private static itemIdCounter: number = 0;
-  public id: string = `${GridComponent.itemIdCounter++}`;
+  public id: string = `${crypto.randomUUID()}`;
 
   @ContentChildren(ItemComponent, {descendants: true}) private itemComponents!: QueryList<ItemComponent>;
 
@@ -108,13 +107,20 @@ export class GridComponent implements AfterViewInit, OnDestroy {
         const newX = clamp(1, this.columns() - (dragItem.width - Math.abs(dragResizeData.itemOffset.x)) + 1, x + dragResizeData.itemOffset.x);
         const newY = clamp(1, this.rows() - (dragItem.height - Math.abs(dragResizeData.itemOffset.y)) + 1, y + dragResizeData.itemOffset.y);
 
-        const item = new Item(this.getNextItemId(), newX, newY, dragItem.width, dragItem.height, dragItem.data);
+        const item = new Item(null, newX, newY, dragItem.width, dragItem.height, dragItem.data);
         this.items.set([...oldItems, item]);
         this.itemDropped.emit({
           event,
           item,
         });
       } else {
+        // Emit itemDropped event when dragging from one grid to another
+        if (dragResizeData.fromGrid !== dragResizeData.currentGrid && dragResizeData.currentGrid === this) {
+          this.itemDropped.emit({
+            event,
+            item: dragResizeData.item,
+          });
+        }
         this.items.set(this.itemComponents.map(c => c.getItem()));
       }
       this._dragging = false;
@@ -329,15 +335,6 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     if (position <= cellSize + gap / 2) return 1;                                     // First square
     if (position >= (cellSize + gap) * (max - 1) - gap / 2) return max;               // Last square
     return Math.floor((position - (cellSize + gap / 2)) / (cellSize + gap)) + 2;   // Middle square
-  }
-
-  /**
-   * Get the next item id
-   */
-  private getNextItemId(): string {
-    return (this.items().map(i => parseInt(i.id))
-      .filter(i => !Number.isNaN(i))
-      .reduce((a, b) => Math.max(a, b), 0) + 1).toString();
   }
 
   /**

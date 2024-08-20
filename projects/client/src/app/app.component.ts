@@ -26,14 +26,14 @@ export class AppComponent {
   public showRemoveItemButton: boolean = true;
 
   public itemsTop: Item[] = [
-    new Item('0', 6, 2, 2, 2, 'Item 0 | TOP'),
-    new Item('1', 2, 2, 2, 1, 'Item 1 | TOP'),
-    new Item('2', 11, 3, 1, 2, 'Item 2 | TOP'),
+    new Item(null, 6, 2, 2, 2, 'Item 0 | TOP'),
+    new Item(null, 2, 2, 2, 1, 'Item 1 | TOP'),
+    new Item(null, 11, 3, 1, 2, 'Item 2 | TOP'),
   ];
 
   public itemsBottom: Item[] = [
-    new Item('3', 6, 2, 2, 2, 'Item 3 | BOTTOM'),
-    new Item('4', 2, 2, 2, 1, 'Item 4 | BOTTOM'),
+    new Item(null, 6, 2, 2, 2, 'Item 3 | BOTTOM'),
+    new Item(null, 2, 2, 2, 1, 'Item 4 | BOTTOM'),
   ];
 
   public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom'];
@@ -41,11 +41,10 @@ export class AppComponent {
 
   public addItemTop(): void {
     if (this.itemsTop.length === 0) {
-      this.itemsTop.push(new Item('0', 1, 1, 1, 1));
+      this.itemsTop.push(new Item(null, 1, 1, 1, 1));
     } else {
       const lastItem = this.itemsTop[this.itemsTop.length - 1];
       const newItem = lastItem.clone();
-      newItem.id = (parseInt(lastItem.id) + 1).toString();
       newItem.x = lastItem.x + 1;
       newItem.y = lastItem.y + 1;
       this.itemsTop.push(newItem);
