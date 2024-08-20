@@ -86,10 +86,11 @@ export class AppComponent {
   public colGap: number = 20;
   public rowGap: number = 20;
 
+  // Generate items with random unique ids
   public items: Item[] = [
-    new Item('0', 6, 2, 2, 2, 'Item 0 | TOP'),
-    new Item('1', 2, 2, 2, 1, 'Item 1 | TOP'),
-    new Item('2', 11, 3, 1, 2, 'Item 2 | TOP'),
+    new Item(null, 6, 2, 2, 2, 'Item 0 | TOP'),
+    new Item(null, 2, 2, 2, 1, 'Item 1 | TOP'),
+    new Item(null, 11, 3, 1, 2, 'Item 2 | TOP'),
   ];
 
   public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom', 'top-right'];

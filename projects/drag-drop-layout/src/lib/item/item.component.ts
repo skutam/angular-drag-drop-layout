@@ -34,8 +34,7 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 })
 // TODO: Add change indicator to this class, so when resizing/dragging we know when to recalculate the position of other items
 export class ItemComponent implements AfterViewInit, OnDestroy {
-  protected static itemIdCounter: number = 0;
-  public id: string = `${ItemComponent.itemIdCounter++}`;
+  public id: string = `${crypto.randomUUID()}`;
 
   @ContentChildren(DragHandleDirective, {descendants: true}) protected dragHandles!: QueryList<DragHandleDirective>;
 

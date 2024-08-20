@@ -40,14 +40,23 @@ export class Item {
   public y: number = 0;
   public data: any = undefined;
 
+  /**
+   * Create a new item
+   * @param id {string|null|undefined} Will be generated if not provided
+   * @param x {number} X coordinate
+   * @param y {number} Y coordinate
+   * @param width {number} Width in columns
+   * @param height {number} Height in rows
+   * @param data {any} Optional data
+   */
   public constructor(
-    id: string,
+    id: string | null | undefined,
     x: number,
     y: number,
     width: number,
     height: number,
     data: any = undefined) {
-    this.id = id;
+    this.id = id == undefined ? crypto.randomUUID().toString() : id;
     this.width = width;
     this.height = height;
     this.x = x;
@@ -56,6 +65,6 @@ export class Item {
   }
 
   public clone(): Item {
-    return new Item(this.id, this.x, this.y, this.width, this.height, this.data);
+    return new Item(null, this.x, this.y, this.width, this.height, this.data);
   }
 }
