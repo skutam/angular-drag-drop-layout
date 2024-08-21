@@ -1,6 +1,12 @@
 {
   "name": "@skutam/drag-drop-layout",
   "description": "Angular library that uses CSS grid for dragging and resizing elements.",
+  "author": "Matúš Škuta @skutam",
+  "bugs": "https://github.com/skutam/angular-drag-drop-layout/issues",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "license": "MIT",
   "version": "0.0.1",
   "type": "module",
   "keywords": [

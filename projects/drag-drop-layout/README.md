@@ -1,17 +1,21 @@
 # Angular drag drop layout
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.1.14.
+![NPM Downloads](https://img.shields.io/npm/dm/%40skutam%2Fdrag-drop-layout)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/skutam/angular-drag-drop-layout)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-pr/skutam/angular-drag-drop-layout)
+![NPM License](https://img.shields.io/npm/l/%40skutam%2Fdrag-drop-layout)
+
+Angular Drag Drop Layout is a lightweight, dependency-free Angular library for creating highly customizable,
+responsive grid layouts with drag-and-drop functionality. Built with Angular 18 and utilizing Angular Signals,
+this library provides a seamless and optimized experience for building dynamic and interactive layouts.
 
 ## Features
-
-- No dependencies
-- Optimized
-- Angular 18
-- Angular signals
-- Responsive css grid layout
-- Draggable items
-- Drag drop into and between grids
-- Custom drag handles
+- **No External Dependencies**: Pure Angular solution with no additional dependencies.
+- **Optimized Performance**: Built with Angular 18 and Angular Signals for efficient change detection and rendering.
+- **Responsive Grid Layout**: Flexible CSS grid-based layout that adapts to various screen sizes.
+- **Draggable Items**: Easily move items within the grid or between multiple grids.
+- **Drag and Drop Between Grids**: Supports dragging items from one grid to another with ease.
+- **Custom Drag Handles**: Assign custom drag handles to control draggable areas within items.
 
 ## Installation
 
