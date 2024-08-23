@@ -1,0 +1,31 @@
+name: Build and Deploy
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    concurrency: ci-${{github.ref}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.6.0'
+
+      - name: Install
+        run: |
+          npm install
+          npm run build:lib
+          npm run build:client:github-pages
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist/client
+          branch: gh-pages
