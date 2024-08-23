@@ -3,11 +3,13 @@
 ![NPM Downloads](https://img.shields.io/npm/dm/%40skutam%2Fdrag-drop-layout)
 ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/skutam/angular-drag-drop-layout)
 ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-pr/skutam/angular-drag-drop-layout)
-![NPM License](https://img.shields.io/npm/l/%40skutam%2Fdrag-drop-layout)
+![NPM License](https://img.shields.io/github/license/skutam/angular-grid-layout)
 
 Angular Drag Drop Layout is a lightweight, dependency-free Angular library for creating highly customizable,
 responsive grid layouts with drag-and-drop functionality. Built with Angular 18 and utilizing Angular Signals,
 this library provides a seamless and optimized experience for building dynamic and interactive layouts.
+
+### **[View Demo](https://skutam.github.io/angular-drag-drop-layout/)**
 
 ## Features
 - **No External Dependencies**: Pure Angular solution with no additional dependencies.
@@ -90,7 +92,6 @@ export class AppComponent {
   public colGap: number = 20;
   public rowGap: number = 20;
 
-  // Generate items with random unique ids
   public items: Item[] = [
     new Item(null, 6, 2, 2, 2, 'Item 0 | TOP'),
     new Item(null, 2, 2, 2, 1, 'Item 1 | TOP'),

@@ -7,6 +7,7 @@
     "build": "npm run build:lib && npm run build:client",
     "build:lib": "ng build drag-drop-layout --configuration production",
     "build:client": "ng build client --configuration production",
+    "build:client:github-pages": "ng build client --configuration github-pages",
     "watch": "ng build --watch --configuration development",
     "watch:lib": "ng build drag-drop-layout --watch --configuration development",
     "serve:client": "ng serve client --port 80 --host 0.0.0.0",

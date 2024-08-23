@@ -48,11 +48,11 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:application",
+          "builder": "@angular-devkit/build-angular:browser",
           "options": {
             "outputPath": "dist/client",
             "index": "projects/client/src/index.html",
-            "browser": "projects/client/src/main.ts",
+            "main": "projects/client/src/main.ts",
             "polyfills": [
               "zone.js"
             ],
@@ -67,12 +67,7 @@
             "styles": [
               "projects/client/src/styles.less"
             ],
-            "scripts": [],
-            "server": "projects/client/src/main.server.ts",
-            "prerender": true,
-            "ssr": {
-              "entry": "projects/client/server.ts"
-            }
+            "scripts": []
           },
           "configurations": {
             "production": {
@@ -90,10 +85,17 @@
               ],
               "outputHashing": "all"
             },
+            "github-pages": {
+              "baseHref": "/angular-drag-drop-layout/",
+              "deployUrl": "/angular-drag-drop-layout/"
+            },
             "development": {
+              "buildOptimizer": false,
               "optimization": false,
+              "vendorChunk": true,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "namedChunks": true
             }
           },
           "defaultConfiguration": "production"
