@@ -82,7 +82,6 @@ export class GridService extends Placeholder {
     this.dragResizeData = {
       fromGrid,
       item,
-      itemComponent,
       dragItemElement: null,
       dragging: true,
       currentGrid: null,
@@ -103,7 +102,6 @@ export class GridService extends Placeholder {
       fromGrid: null,
       item,
       dragItemElement: element,
-      itemComponent: null,
       dragging: true,
       currentGrid: null,
       previousGrid: null,
@@ -125,7 +123,6 @@ export class GridService extends Placeholder {
     this.dragResizeData = {
       fromGrid: null,
       item,
-      itemComponent,
       dragItemElement: null,
       dragging: false,
       currentGrid: null,
@@ -159,7 +156,7 @@ export class GridService extends Placeholder {
     this.dragResizeData!.previousGrid?.dragLeave.emit({
       event,
       item: this.dragResizeData!.item,
-      draggingItemRect: (this.dragResizeData!.dragItemElement || this.dragResizeData!.itemComponent?.element)!.getBoundingClientRect()
+      dragItemElement: this.dragResizeData!.dragItemElement
     });
 
     // Find the new grid and notify it
@@ -167,7 +164,7 @@ export class GridService extends Placeholder {
     this.dragResizeData!.currentGrid?.dragEnter.emit({
       event,
       item: this.dragResizeData!.item,
-      draggingItemRect: (this.dragResizeData!.dragItemElement || this.dragResizeData!.itemComponent?.element)!.getBoundingClientRect()
+      dragItemElement: this.dragResizeData!.dragItemElement
     });
   }
 }

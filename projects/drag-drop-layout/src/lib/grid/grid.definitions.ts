@@ -1,11 +1,10 @@
 import {GridComponent} from "./grid.component";
 import {Item} from "../item/item.definitions";
-import {ItemComponent} from "../item/item.component";
 
 export interface GridEvent {
   event: PointerEvent;
   item: Item;
-  draggingItemRect: DOMRect;
+  dragItemElement: HTMLElement | null;
 }
 
 export interface GridItemDroppedEvent {
@@ -25,8 +24,7 @@ export interface GridRectData {
 export interface IDragResizeData {
   fromGrid: GridComponent | null;
   item: Item;
-  itemComponent: ItemComponent | null;
-  dragItemElement: HTMLElement | null;
+  dragItemElement: HTMLElement | null; // The element of new item we are trying to drag into grid
   dragging: boolean; // Differentiate between dragging and resizing
   previousGrid: GridComponent | null; // The grid the item was previously in the last pinter move check
   currentGrid: GridComponent | null;  // The grid the item is currently in, used to trigger dragEnter and dragLeave events

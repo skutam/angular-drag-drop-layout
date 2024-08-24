@@ -50,6 +50,10 @@ export class Placeholder {
     this.item.y = 0;
     this.item.width = 0;
     this.item.height = 0;
+
+    // Item still exists, but is not visible, make sure to reset it so it doesn't cause overflow issues
+    this.movePlaceholder(0, 0);
+    this.resizePlaceholder(0, 0);
   }
 
   public getItem(): Item {
