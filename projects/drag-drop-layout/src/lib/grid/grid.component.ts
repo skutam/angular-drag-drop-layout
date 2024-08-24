@@ -80,9 +80,12 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
     outputToObservable(this.dragLeave).pipe(
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({draggingItemRect, item}) => {
+    ).subscribe(({dragItemElement, item}) => {
       this._dragging = false;
-      this.gridService.resizePlaceholder(draggingItemRect.width, draggingItemRect.height);
+      if (dragItemElement) {
+        const {width, height} = dragItemElement.getBoundingClientRect();
+        this.gridService.resizePlaceholder(width, height);
+      }
 
       // Update items by removing the currently dragged item from them
       this.items.update(items => items.filter(i => i.id !== item.id));
