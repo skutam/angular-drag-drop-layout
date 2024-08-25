@@ -67,23 +67,26 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
     outputToObservable(this.dragEnter).pipe(
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({item}) => {
+    ).subscribe(({item, dragResizeData, event}) => {
       this._dragging = true;
       const {cellWidth, cellHeight} = this.calcGridRectData();
       const width = item.width * cellWidth + (item.width - 1) * this.colGap();
       const height = item.height * cellHeight + (item.height - 1) * this.rowGap();
       this.gridService.resizePlaceholder(width, height);
+      const {x, y} = this.calculateItemPosition(event, item.width, item.height, dragResizeData);
+
+      const newItem = new Item(item.id, x, y, item.width, item.height, item.data);
 
       // Update items when we are dragging new item into the grid
-      this.items.update(items => items.find(i => i.id === item.id) ? items : [...items, item]);
+      this.items.update(items => items.find(i => i.id === item.id) ? items : [...items, newItem]);
     });
 
     outputToObservable(this.dragLeave).pipe(
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({dragItemElement, item}) => {
+    ).subscribe(({dragResizeData, item}) => {
       this._dragging = false;
-      if (dragItemElement) {
-        const {width, height} = dragItemElement.getBoundingClientRect();
+      if (dragResizeData.dragItemElement) {
+        const {width, height} = dragResizeData.dragItemElement.getBoundingClientRect();
         this.gridService.resizePlaceholder(width, height);
       }
 
@@ -105,12 +108,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       // Dragging new ddl-item into the grid
       if (dragItem) {
         const oldItems = this.items().filter((i) => i.id !== 'dragItem');
-        const {x,y} = this.calcItemPositionInGrid(event);
-
-        const newX = clamp(1, this.columns() - (dragItem.width - Math.abs(dragResizeData.itemOffset.x)) + 1, x + dragResizeData.itemOffset.x);
-        const newY = clamp(1, this.rows() - (dragItem.height - Math.abs(dragResizeData.itemOffset.y)) + 1, y + dragResizeData.itemOffset.y);
-
-        const item = new Item(null, newX, newY, dragItem.width, dragItem.height, dragItem.data);
+        const {x, y} = this.calculateItemPosition(event, dragItem.width, dragItem.height, dragResizeData);
+        const item = new Item(null, x, y, dragItem.width, dragItem.height, dragItem.data);
         this.items.set([...oldItems, item]);
         this.itemDropped.emit({
           event,
@@ -191,13 +190,9 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    const {x,y} = this.calcItemPositionInGrid(event);
-
-    const newX = clamp(1, this.columns() - (item.width() - Math.abs(dragResizeData.itemOffset.x)) + 1, x + dragResizeData.itemOffset.x);
-    const newY = clamp(1, this.rows() - (item.height() - Math.abs(dragResizeData.itemOffset.y)) + 1, y + dragResizeData.itemOffset.y);
-
-    item.x.set(newX);
-    item.y.set(newY);
+    const {x, y} = this.calculateItemPosition(event, item.width(), item.height(), dragResizeData);
+    item.x.set(x);
+    item.y.set(y);
   }
 
   private resizeStart(item: ItemComponent, event: PointerEvent, resizeType: ResizeType): void {
@@ -214,9 +209,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     this.gridService.pointerEnd$.pipe(
       takeUntilDestroyed(this.destroyRef),
       take(1),
-    ).subscribe(() => {
-      this.items.set(this.itemComponents.map((item) => item.getItem()));
-    });
+    ).subscribe(() => this.items.set(this.itemComponents.map((item) => item.getItem())));
   }
 
   // TODO: When resizing outside the window, the scroll position is not taken into account
@@ -321,6 +314,27 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /**
+   * Calculates the new x and y position of the item being dragged, making sure it doesn't go out of bounds
+   * @param event The pointer event
+   * @param width The width of the item being dragged
+   * @param height The height of the item being dragged
+   * @param dragResizeData The drag resize data
+   * @private
+   */
+  private calculateItemPosition(event: PointerEvent, width: number, height: number, dragResizeData: IDragResizeData): {x: number, y: number} {
+    const {x, y} = this.calcItemPositionInGrid(event);
+
+    const newX = clamp(1, this.columns() - (width - Math.abs(dragResizeData.itemOffset.x)) + 1, x + dragResizeData.itemOffset.x);
+    const newY = clamp(1, this.rows() - (height - Math.abs(dragResizeData.itemOffset.y)) + 1, y + dragResizeData.itemOffset.y);
+    return {x: newX, y: newY};
+  }
+
+  /**
+   * Calculates the x and y position of the pointer relative to the grid, 0,0 is the top left corner of the grid
+   * @param event
+   * @private
+   */
   private calcItemPositionInGrid(event: PointerEvent): {x: number, y: number} {
     const gridRectData = this.calcGridRectData();
 
@@ -334,6 +348,14 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     return {x, y};
   }
 
+  /**
+   * Calculates the grid item position based on the pointer position
+   * @param position The position of the pointer
+   * @param cellSize The size of the cell
+   * @param gap The gap between the cells
+   * @param max The maximum number of cells
+   * @private
+   */
   private calcGridItemPosition(position: number, cellSize: number, gap: number, max: number): number {
     if (position <= cellSize + gap / 2) return 1;                                     // First square
     if (position >= (cellSize + gap) * (max - 1) - gap / 2) return max;               // Last square
