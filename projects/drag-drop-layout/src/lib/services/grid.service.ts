@@ -156,7 +156,7 @@ export class GridService extends Placeholder {
     this.dragResizeData!.previousGrid?.dragLeave.emit({
       event,
       item: this.dragResizeData!.item,
-      dragItemElement: this.dragResizeData!.dragItemElement
+      dragResizeData: this.dragResizeData!,
     });
 
     // Find the new grid and notify it
@@ -164,7 +164,7 @@ export class GridService extends Placeholder {
     this.dragResizeData!.currentGrid?.dragEnter.emit({
       event,
       item: this.dragResizeData!.item,
-      dragItemElement: this.dragResizeData!.dragItemElement
+      dragResizeData: this.dragResizeData!,
     });
   }
 }
