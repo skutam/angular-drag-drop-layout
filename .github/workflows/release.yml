@@ -54,11 +54,9 @@ jobs:
           git commit -m "chore: release ${{ env.NEW_VERSION }}"
           git tag ${{ env.NEW_VERSION }}
 
-      - name: Install and publish
+      - name: Publish
         run: |
-          npm install
-          npm run build:lib
-          npm publish --access public
+          cd projects/drag-drop-layout && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
