@@ -56,7 +56,9 @@ jobs:
 
       - name: Publish
         run: |
-          cd projects/drag-drop-layout && npm publish --access public
+          npm install
+          npm run build:lib
+          cd dist/drag-drop-layout && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
