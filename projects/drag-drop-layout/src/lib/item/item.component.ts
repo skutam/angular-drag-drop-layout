@@ -31,6 +31,11 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './item.component.html',
   styleUrl: './item.component.css',
+  host: {
+    '[draggable]': 'draggable() && dragHandles.length === 0',
+    '[disabled]': 'disabled()',
+    '[style.cursor]': 'disabled() ? "not-allowed" : (draggable() && dragHandles.length === 0 ? "move" : "default")',
+  },
 })
 // TODO: Add change indicator to this class, so when resizing/dragging we know when to recalculate the position of other items
 export class ItemComponent implements AfterViewInit, OnDestroy {
@@ -47,6 +52,9 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
 
   // Inputs
   public resizeTypes: InputSignal<ResizeType[]> = input(['bottom-left'] as ResizeType[]);
+  public draggable = input(true);
+  public resizable = input(true);
+  public disabled = input(false);
 
   // Outputs
   public dragStart = output<ItemDragEvent>();
@@ -58,6 +66,9 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('pointerdown', ['$event'])
   public hostStartDrag(event: PointerEvent) {
+    if (!this.draggable()) {
+      return;
+    }
     /**
      * Only start dragging if the left mouse button is pressed.
      * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
@@ -109,18 +120,23 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
 
   private registerDragHandles(): void {
     // Set cursor
-    this.item.nativeElement.style.cursor = this.dragHandles.length === 0 ? 'move' : 'default';
+    this.item.nativeElement.style.cursor = this.dragHandles.length === 0 && this.draggable() ? 'move' : 'default';
 
     // Unsubscribe from previous drag handles
     this.dragHandleDragStartSubscriptions.forEach((subscription) => subscription.unsubscribe());
     this.dragHandleDragStartSubscriptions = [];
 
+    this.dragHandles.forEach((dragHandle) => {
+      dragHandle.draggable = this.draggable;
+      dragHandle.disabled = this.disabled;
+    });
+
     // Subscribe to new drag handles
-    this.dragHandleDragStartSubscriptions.push(
-      ...this.dragHandles.map((dragHandle) => {
-        return dragHandle.dragStart.subscribe((event) => this.startDrag(event));
-      })
-    )
+    if (this.draggable()) {
+      this.dragHandleDragStartSubscriptions.push(
+        ...this.dragHandles.map((dragHandle) => dragHandle.dragStart.subscribe((event) => this.startDrag(event)))
+      );
+    }
   }
 
   private startDrag(event: PointerEvent): void {

@@ -1,6 +1,8 @@
 <!-- Resize handles must be a-top the ng-content so when some button is added it is not overlapped by the resize handle.  -->
-<div *ngFor="let resizeType of resizeTypes()"
-     class="resize-handle"
-     [class]="resizeType"
-     (pointerdown)="startResize($event, resizeType)"></div>
+<ng-container *ngIf="resizable() && !disabled()">
+  <div *ngFor="let resizeType of resizeTypes()"
+       class="resize-handle"
+       [class]="resizeType"
+       (pointerdown)="startResize($event, resizeType)"></div>
+</ng-container>
 <ng-content></ng-content>

@@ -4,10 +4,10 @@
   "author": "Matúš Škuta @skutam",
   "bugs": "https://github.com/skutam/angular-drag-drop-layout/issues",
   "engines": {
-    "node": ">=22.6.0"
+    "node": ">=22.0.0"
   },
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "keywords": [
     "angular",

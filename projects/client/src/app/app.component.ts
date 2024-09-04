@@ -24,6 +24,9 @@ export class AppComponent {
   public rowGap: number = 20;
 
   public showRemoveItemButton: boolean = true;
+  public isResizable: boolean = true;
+  public isDraggable: boolean = true;
+  public isDisabled: boolean = false;
 
   public itemsTop: Item[] = [
     new Item(null, 6, 2, 2, 2, 'Item 0 | TOP'),
