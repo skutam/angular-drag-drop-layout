@@ -22,7 +22,7 @@ this library provides a seamless and optimized experience for building dynamic a
 ## Installation
 
 ```bash
-npm install angular-drag-drop-layout
+npm install @skutam/drag-drop-layout
 ```
 
 ## Usage
