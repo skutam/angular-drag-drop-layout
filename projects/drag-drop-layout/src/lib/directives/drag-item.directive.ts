@@ -8,7 +8,7 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 @Directive({
   selector: '[ddlDragItem]',
   host: {
-    '[draggable]': 'draggable()',
+    '[draggable]': 'draggable() && !disabled()',
     '[disabled]': 'disabled()',
     '[style.cursor]': 'disabled() ? "not-allowed" : (draggable() ? "move" : "default")',
   },
@@ -20,10 +20,9 @@ export class DragItemDirective implements OnDestroy {
   // Inputs
   public draggable = input(true);
   public disabled = input(false);
-  public dragData = input<any>();
-
   public width = input(1);
   public height = input(1);
+  public dragData = input<any>();
 
   // Outputs
   public dragStart = output<PointerEvent>();
@@ -36,11 +35,15 @@ export class DragItemDirective implements OnDestroy {
      * Only start dragging if the left mouse button is pressed.
      * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
      */
-    if (!this.draggable() || event.button !== 0 && event.buttons !== 1) {
+    if (event.button !== 0 && event.buttons !== 1) {
       return;
     }
 
     event.preventDefault();
+
+    if (!this.draggable() || this.disabled()) {
+      return;
+    }
 
     this.dragStart.emit(event);
     this.gridService.startItemDrag(this.getItem(), this.dragItem.nativeElement, event);

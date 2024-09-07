@@ -6,6 +6,7 @@
     "start": "ng serve",
     "build": "npm run build:lib && npm run build:client",
     "build:lib": "ng build drag-drop-layout --configuration production",
+    "build:lib:locally": "ng build drag-drop-layout --configuration production && cd dist/drag-drop-layout && npm pack --pack-destination ../",
     "build:client": "ng build client --configuration production",
     "build:client:github-pages": "ng build client --configuration github-pages",
     "watch": "ng build --watch --configuration development",

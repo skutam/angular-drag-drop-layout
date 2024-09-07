@@ -164,6 +164,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       item.y.set(itemData.y);
       item.width.set(itemData.width);
       item.height.set(itemData.height);
+      item.data.set(itemData.data);
 
       this.itemComponentSubscriptions.push(
         // Register drag events
