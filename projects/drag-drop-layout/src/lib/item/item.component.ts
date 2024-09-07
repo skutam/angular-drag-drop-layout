@@ -2,13 +2,13 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
-  ContentChildren, DestroyRef,
+  ContentChildren,
+  DestroyRef,
   effect,
   ElementRef,
   HostListener,
   Inject,
   input,
-  InputSignal,
   OnDestroy,
   output,
   OutputRefSubscription,
@@ -32,7 +32,7 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
   templateUrl: './item.component.html',
   styleUrl: './item.component.css',
   host: {
-    '[draggable]': 'draggable() && dragHandles.length === 0',
+    '[draggable]': 'draggable() && dragHandles.length === 0 && !disabled()',
     '[disabled]': 'disabled()',
     '[style.cursor]': 'disabled() ? "not-allowed" : (draggable() && dragHandles.length === 0 ? "move" : "default")',
   },
@@ -51,7 +51,7 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public data = signal<any>(undefined);
 
   // Inputs
-  public resizeTypes: InputSignal<ResizeType[]> = input(['bottom-left'] as ResizeType[]);
+  public resizeTypes = input(['bottom-left'] as ResizeType[]);
   public draggable = input(true);
   public resizable = input(true);
   public disabled = input(false);
@@ -66,14 +66,17 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('pointerdown', ['$event'])
   public hostStartDrag(event: PointerEvent) {
-    if (!this.draggable()) {
-      return;
-    }
     /**
      * Only start dragging if the left mouse button is pressed.
      * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
      */
     if (event.button !== 0 && event.buttons !== 1) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!this.draggable() || this.disabled()) {
       return;
     }
 
@@ -140,8 +143,6 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   }
 
   private startDrag(event: PointerEvent): void {
-    event.preventDefault();
-
     this.dragStart.emit({
       item: this.getItem(),
       event: event,
