@@ -74,11 +74,11 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    event.preventDefault();
-
     if (!this.draggable() || this.disabled()) {
       return;
     }
+
+    event.preventDefault();
 
     // When there are no drag handles, the whole item can be dragged.
     if (this.dragHandles.length !== 0) {

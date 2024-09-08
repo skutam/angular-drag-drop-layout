@@ -39,11 +39,11 @@ export class DragItemDirective implements OnDestroy {
       return;
     }
 
-    event.preventDefault();
-
     if (!this.draggable() || this.disabled()) {
       return;
     }
+
+    event.preventDefault();
 
     this.dragStart.emit(event);
     this.gridService.startItemDrag(this.getItem(), this.dragItem.nativeElement, event);
