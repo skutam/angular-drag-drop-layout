@@ -1,43 +1,81 @@
-<button (click)="addItemTop()">Add Item</button>
-<label> Cols:
-  <input type="number" [(ngModel)]="columns" placeholder="cols">
-</label>
+<div class="group-flex-column">
+  <h2>Resize Types:</h2>
+  <div class="group-flex-row">
+    <label class="col" *ngFor="let resizeType of RESIZE_TYPES">
+      <input type="checkbox" [checked]="resizeTypes.includes(resizeType)" [value]="resizeType" (change)="toggleResizeType(resizeType)">
+      {{resizeType}}
+    </label>
+  </div>
+</div>
 
-<label> Rows:
-  <input type="number" [(ngModel)]="rows" placeholder="rows">
-</label>
+<div class="group-flex-column">
+  <h2>Features:</h2>
+  <div class="group-flex-row">
+    <label class="col">
+      <input type="checkbox" [(ngModel)]="showRemoveItemButton"> Show remove button
+    </label>
+    <label class="col">
+      <input type="checkbox" [(ngModel)]="isResizable"> Is resizable
+    </label>
+    <label class="col">
+      <input type="checkbox" [(ngModel)]="isDraggable"> Is draggable
+    </label>
+    <label class="col">
+      <input type="checkbox" [(ngModel)]="isDisabled"> Is disabled
+    </label>
+  </div>
+</div>
 
-<!-- Generate list of ResizeTypes, that can be added or removed to resizeTypes variable -->
-<label> Resize Types:
-  <label *ngFor="let resizeType of RESIZE_TYPES">
-    <input type="checkbox" [checked]="resizeTypes.includes(resizeType)" [value]="resizeType" (change)="toggleResizeType(resizeType)">
-    {{resizeType}}
-  </label>
-</label>
-
-<label>
-  <input type="checkbox" [(ngModel)]="showRemoveItemButton"> Show remove button
-</label>
-
-<label>
-  <input type="checkbox" [(ngModel)]="isResizable"> Is resizable
-</label>
-
-<label>
-  <input type="checkbox" [(ngModel)]="isDraggable"> Is draggable
-</label>
-
-<label>
-  <input type="checkbox" [(ngModel)]="isDisabled"> Is disabled
-</label>
+<div class="group-flex-column">
+  <h2>Grid:</h2>
+  <div class="group-flex-row">
+      <label class="col"> Cols:
+        <input type="number" [(ngModel)]="columns" placeholder="cols">
+      </label>
+      <label class="col"> Rows:
+        <input type="number" [(ngModel)]="rows" placeholder="rows">
+      </label>
+      <label class="col"> Col Gap:
+        <input type="number" [(ngModel)]="colGap" placeholder="col gap">
+      </label>
+      <label class="col"> Row gap:
+        <input type="number" [(ngModel)]="rowGap" placeholder="row gap">
+      </label>
+  </div>
+  <div class="d-flex">
+    <div class="group-flex-column mr2">
+      <h2>Grid height: {{gridHeight}}</h2>
+      <div class="group-flex-row">
+        <app-height-picker (height)="gridHeight = $event"></app-height-picker>
+      </div>
+    </div>
+    <div class="group-flex-column">
+      <h2>Grid item min height: {{itemMinHeight}}</h2>
+      <div class="group-flex-row">
+        <label class="col">
+          <input type="checkbox" [(ngModel)]="itemMinHeightIsNull"> Minimal item is null
+        </label>
+        <app-height-prop-picker [disabled]="itemMinHeightIsNull" [heightValue]="3" [heightUnit]="'em'" (heightProp)="itemMinHeight = $event"></app-height-prop-picker>
+      </div>
+      <small>When set to null, we have the exact same height for each row, when minimal item height is set we have dynamic height. </small>
+    </div>
+  </div>
+  <button class="add-button" (click)="addItemTop()">Add Item</button>
+</div>
 
 <ddl-grid [columns]="columns" #gridTop class="grid-top"
           [rows]="rows"
           [colGap]="colGap"
           [rowGap]="rowGap"
+          [gridHeight]="gridHeight"
+          [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
           (itemDropped)="itemDropped($event)"
           [(items)]="itemsTop">
-  <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy" [resizable]="isResizable" [draggable]="isDraggable" [disabled]="isDisabled" [resizeTypes]="resizeTypes">
+  <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"
+            [resizable]="isResizable"
+            [draggable]="isDraggable"
+            [disabled]="isDisabled"
+            [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
     <span class="item-info-data">{{item.data}}</span>
     <button *ngIf="showRemoveItemButton" class="remove-item-btn" (click)="removeItemTop(item.id)">x</button>
@@ -50,8 +88,8 @@
        class="drag-item"
        [draggable]="true"
        [disabled]="i == 1"
-       [width]="2"
-       [height]="2"
+       [width]="columns"
+       [height]="1"
        [dragData]="i"
        *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
 </div>

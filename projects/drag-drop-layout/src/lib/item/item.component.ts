@@ -51,7 +51,7 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public data = signal<any>(undefined);
 
   // Inputs
-  public resizeTypes = input(['bottom-left'] as ResizeType[]);
+  public resizeTypes = input<ResizeType[]>(['bottom-left']);
   public draggable = input(true);
   public resizable = input(true);
   public disabled = input(false);
