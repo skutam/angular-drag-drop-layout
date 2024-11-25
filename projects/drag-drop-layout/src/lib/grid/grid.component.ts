@@ -1,20 +1,30 @@
 import {
   AfterViewInit,
-  ChangeDetectionStrategy, ChangeDetectorRef,
-  Component, ContentChildren, DestroyRef, effect,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ContentChildren,
+  DestroyRef,
+  effect,
   ElementRef,
   Inject,
-  input, InputSignal,
-  model, OnDestroy, output, OutputRefSubscription, QueryList,
+  input,
+  InputSignal,
+  model,
+  OnDestroy,
+  output,
+  OutputRefSubscription,
+  QueryList,
 } from '@angular/core';
 import {ItemComponent} from "../item/item.component";
-import {getResizeInfo, Item, ResizeType} from "../item/item.definitions";
+import {getResizeInfo, Item, ResizeInfo, ResizeType} from "../item/item.definitions";
 import {GridDragItemService} from "../services/grid-drag-item.service";
 import {GridEvent, GridItemDroppedEvent, GridRectData, IDragResizeData} from "./grid.definitions";
 import {GridService} from "../services/grid.service";
 import {outputToObservable, takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {filter, take, takeUntil} from "rxjs";
 import {clamp} from "../util";
+import {SizeProp} from "../definitions";
 
 @Component({
   selector: 'ddl-grid',
@@ -32,7 +42,10 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   public rows = input<number>(3);
   public colGap= input<number>(8);
   public rowGap = input<number>(8);
-  public items = model<Item[]>([] as Item[]);
+  public items = model<Item[]>([] as Item[])
+
+  public staticGridHeight = input<SizeProp>('auto');
+  public staticItemHeight = input<SizeProp | '1fr'>('1fr');
 
   // Outputs
   public dragEnter = output<GridEvent>();
@@ -57,6 +70,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     this.registerPropertyEffect('--ddl-grid-rows', this.rows);
     this.registerPropertyEffect('--ddl-grid-col-gap', this.colGap, 'px');
     this.registerPropertyEffect('--ddl-grid-row-gap', this.rowGap, 'px');
+    this.registerPropertyEffect('--ddl-grid-height', this.staticGridHeight);
+    this.registerPropertyEffect('--ddl-grid-item-row-height', this.staticItemHeight);
 
     effect(() => {
       this.items();
@@ -199,13 +214,22 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   private resizeStart(item: ItemComponent, event: PointerEvent, resizeType: ResizeType): void {
     this.gridService.startResize(item.getItem(), item, event);
 
-    const initItemRect = item.element.getBoundingClientRect();
     const initResizeItem = item.getItem();
+    const resizeInfo = getResizeInfo(resizeType);
 
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event}) => this.resizeMove(event, item, resizeType, initItemRect, initResizeItem));
+    ).subscribe(({event}) => {
+      this.resizeMove(event, item, resizeInfo, initResizeItem);
+
+      // Move placeholder after rendering the item in the grid
+      setTimeout(() => {
+        const {newWidth, newHeight, newDeltaX, newDeltaY} = this.resizeCalculate(event, resizeInfo, item.element.getBoundingClientRect());
+        this.gridService.resizePlaceholder(newWidth, newHeight);
+        this.gridService.movePlaceholder(newDeltaX, newDeltaY);
+      }, 0);
+    });
 
     this.gridService.pointerEnd$.pipe(
       takeUntilDestroyed(this.destroyRef),
@@ -214,10 +238,35 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   }
 
   // TODO: When resizing outside the window, the scroll position is not taken into account
-  private resizeMove(event: PointerEvent, item: ItemComponent, resizeType: ResizeType, initItemRect: DOMRect, initResizeItem: Item): void {
-    const {cellWidth, cellHeight} = this.calcGridRectData();
-    const resizeInfo = getResizeInfo(resizeType);
+  private resizeMove(event: PointerEvent, item: ItemComponent, resizeInfo: ResizeInfo, initResizeItem: Item): void {
+    const {cellWidth, height, width, top, left} = this.calcGridRectData();
 
+    const xOnGrid = clamp(1, width, (event.clientX + window.scrollX) - (left + window.scrollX));
+    const x = this.calcGridItemPosition(xOnGrid, cellWidth, this.colGap(), this.columns());
+    if (resizeInfo.left) {
+      const rightX = item.x() + item.width() - 1;
+      const widthCols = rightX - x + 1;
+      item.width.set(Math.max(1, widthCols));
+      item.x.set(Math.max(1, (initResizeItem.x + initResizeItem.width) - item.width()));
+    } else {
+      const widthCols = x - item.x() + 1;
+      item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
+    }
+
+    const yOnGrid = clamp(1, height, (event.clientY + window.scrollY) - (top + window.scrollY));
+    const y = this.calcGridItemPositionY(yOnGrid, this.rowGap());
+    if (resizeInfo.top) {
+      const bottomY = item.y() + item.height() - 1;
+      const heightCells = bottomY - y + 1;
+      item.height.set(Math.max(1, heightCells));
+      item.y.set(Math.max(1, (initResizeItem.y + initResizeItem.height) - item.height()));
+    } else {
+      const heightCells = y - item.y() + 1;
+      item.height.set(Math.max(1, Math.min(heightCells, this.rows() - item.y() + 1)));
+    }
+  }
+
+  private resizeCalculate(event:PointerEvent, resizeInfo: ResizeInfo, initItemRect: DOMRect): {newWidth: number, newHeight: number, newDeltaX: number, newDeltaY: number} {
     let newWidth = this.gridService.getItem().width;
     let newHeight = this.gridService.getItem().height;
     let newDeltaX = this.gridService.getItem().x;
@@ -248,27 +297,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     // Force width and height to be at least 1 pixel
     newWidth = Math.max(1, newWidth);
     newHeight = Math.max(1, newHeight);
-    this.gridService.resizePlaceholder(newWidth, newHeight);
 
-    let widthCols = Math.ceil(newWidth / (cellWidth + this.colGap()));
-    let heightCells = Math.ceil(newHeight / (cellHeight + this.rowGap()));
-
-    if (resizeInfo.left) {
-      widthCols = Math.min(widthCols, initResizeItem.x + initResizeItem.width - 1);
-      item.width.set(Math.max(1, widthCols));
-      item.x.set(Math.max(1, (initResizeItem.x + initResizeItem.width) - item.width()));
-    } else {
-      item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
-    }
-
-    if (resizeInfo.top) {
-      heightCells = Math.min(heightCells, initResizeItem.y + initResizeItem.height - 1);
-      item.height.set(Math.max(1, heightCells));
-      item.y.set(Math.max(1, (initResizeItem.y + initResizeItem.height) - item.height()));
-    } else {
-      item.height.set(Math.max(1, Math.min(heightCells, this.rows() - item.y() + 1)));
-    }
-    this.gridService.movePlaceholder(newDeltaX, newDeltaY);
+    return {newWidth, newHeight, newDeltaX, newDeltaY};
   }
 
   public eventInsideGrid(event: PointerEvent): boolean {
@@ -344,7 +374,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     const yOnGrid = clamp(1, gridRectData.height, (event.clientY + window.scrollY) - (gridRectData.top + window.scrollY));
 
     const x = this.calcGridItemPosition(xOnGrid, gridRectData.cellWidth, this.colGap(), this.columns());
-    const y = this.calcGridItemPosition(yOnGrid, gridRectData.cellHeight, this.rowGap(), this.rows());
+    const y = this.calcGridItemPositionY(yOnGrid, this.rowGap());
 
     return {x, y};
   }
@@ -361,6 +391,31 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     if (position <= cellSize + gap / 2) return 1;                                     // First square
     if (position >= (cellSize + gap) * (max - 1) - gap / 2) return max;               // Last square
     return Math.floor((position - (cellSize + gap / 2)) / (cellSize + gap)) + 2;   // Middle square
+  }
+
+  /**
+   * Calculates the grid item position based on the pointer position
+   * @param position The position of the pointer
+   * @param gap The gap between the cells
+   * @private
+   */
+  private calcGridItemPositionY(position: number, gap: number): number {
+    const pixelHeights = window.getComputedStyle(this.grid.nativeElement).gridTemplateRows;
+    const heights = pixelHeights.split(' ').map((height) => parseInt(height, 10));
+
+    let from = 0;
+    let to = 0;
+
+    for (let i = 0; i < heights.length; i++) {
+      const height = heights[i];
+      to += height + gap;
+      if (position >= from && position <= to) {
+        return i + 1;
+      }
+    }
+
+    console.error("Should not be here");
+    return -1;
   }
 
   /**

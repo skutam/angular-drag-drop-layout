@@ -1,11 +1,5 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import {
-  itemTrackBy,
-  ResizeType,
-  DragDropLayoutModule,
-  Item
-} from '@skutam/drag-drop-layout';
+import {Component} from '@angular/core';
+import {DragDropLayoutModule, Item, itemTrackBy, ResizeType} from '@skutam/drag-drop-layout';
 import {NgForOf, NgIf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {GridItemDroppedEvent} from "../../../drag-drop-layout/src/lib/grid/grid.definitions";
@@ -13,7 +7,7 @@ import {GridItemDroppedEvent} from "../../../drag-drop-layout/src/lib/grid/grid.
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NgForOf, FormsModule, DragDropLayoutModule, NgIf],
+  imports: [NgForOf, FormsModule, DragDropLayoutModule, NgIf],
   templateUrl: './app.component.html',
   styleUrl: './app.component.less'
 })
