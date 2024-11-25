@@ -37,7 +37,11 @@
           [rowGap]="rowGap"
           (itemDropped)="itemDropped($event)"
           [(items)]="itemsTop">
-  <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy" [resizable]="isResizable" [draggable]="isDraggable" [disabled]="isDisabled" [resizeTypes]="resizeTypes">
+  <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"
+            [resizable]="isResizable"
+            [draggable]="isDraggable"
+            [disabled]="isDisabled"
+            [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
     <span class="item-info-data">{{item.data}}</span>
     <button *ngIf="showRemoveItemButton" class="remove-item-btn" (click)="removeItemTop(item.id)">x</button>
