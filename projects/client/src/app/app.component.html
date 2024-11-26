@@ -1,40 +1,62 @@
-<button (click)="addItemTop()">Add Item</button>
-<label> Cols:
-  <input type="number" [(ngModel)]="columns" placeholder="cols">
-</label>
+<div class="group-flex-column">
+  <h2>Resize Types:</h2>
+  <div class="group-flex-row">
+    <label class="col" *ngFor="let resizeType of RESIZE_TYPES">
+      <input type="checkbox" [checked]="resizeTypes.includes(resizeType)" [value]="resizeType" (change)="toggleResizeType(resizeType)">
+      {{resizeType}}
+    </label>
+  </div>
+</div>
 
-<label> Rows:
-  <input type="number" [(ngModel)]="rows" placeholder="rows">
-</label>
+<div class="group-flex-column">
+  <h2>Features:</h2>
+  <div class="group-flex-row">
+    <label class="col">
+      <input type="checkbox" [(ngModel)]="showRemoveItemButton"> Show remove button
+    </label>
+    <label class="col">
+      <input type="checkbox" [(ngModel)]="isResizable"> Is resizable
+    </label>
+    <label class="col">
+      <input type="checkbox" [(ngModel)]="isDraggable"> Is draggable
+    </label>
+    <label class="col">
+      <input type="checkbox" [(ngModel)]="isDisabled"> Is disabled
+    </label>
+  </div>
+</div>
 
-<!-- Generate list of ResizeTypes, that can be added or removed to resizeTypes variable -->
-<label> Resize Types:
-  <label *ngFor="let resizeType of RESIZE_TYPES">
-    <input type="checkbox" [checked]="resizeTypes.includes(resizeType)" [value]="resizeType" (change)="toggleResizeType(resizeType)">
-    {{resizeType}}
-  </label>
-</label>
-
-<label>
-  <input type="checkbox" [(ngModel)]="showRemoveItemButton"> Show remove button
-</label>
-
-<label>
-  <input type="checkbox" [(ngModel)]="isResizable"> Is resizable
-</label>
-
-<label>
-  <input type="checkbox" [(ngModel)]="isDraggable"> Is draggable
-</label>
-
-<label>
-  <input type="checkbox" [(ngModel)]="isDisabled"> Is disabled
-</label>
+<div class="group-flex-column">
+  <h2>Grid:</h2>
+  <div class="group-flex-row">
+      <label class="col"> Cols:
+        <input type="number" [(ngModel)]="columns" placeholder="cols">
+      </label>
+      <label class="col"> Rows:
+        <input type="number" [(ngModel)]="rows" placeholder="rows">
+      </label>
+      <label class="col"> Col Gap:
+        <input type="number" [(ngModel)]="colGap" placeholder="col gap">
+      </label>
+      <label class="col"> Row gap:
+        <input type="number" [(ngModel)]="rowGap" placeholder="row gap">
+      </label>
+  </div>
+  <div class="group-flex-row">
+    <label class="col"> Grid height:
+      <!-- Allow to set grid height, either as string or number with unit -->
+      <input type="text" [(ngModel)]="gridHeight" placeholder="grid height">
+      <small>Allowed values: auto | max-content | min-content | fit-content | stretch | 25px | 5em | 25%;</small>
+    </label>
+  </div>
+  <button class="add-button" (click)="addItemTop()">Add Item</button>
+</div>
 
 <ddl-grid [columns]="columns" #gridTop class="grid-top"
           [rows]="rows"
           [colGap]="colGap"
           [rowGap]="rowGap"
+          [gridHeight]="gridHeight"
           (itemDropped)="itemDropped($event)"
           [(items)]="itemsTop">
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"

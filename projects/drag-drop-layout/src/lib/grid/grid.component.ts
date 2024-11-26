@@ -24,7 +24,7 @@ import {GridService} from "../services/grid.service";
 import {outputToObservable, takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {filter, take, takeUntil} from "rxjs";
 import {clamp} from "../util";
-import {SizeProp} from "../definitions";
+import {HeightProp, Unit} from "../definitions";
 
 @Component({
   selector: 'ddl-grid',
@@ -44,8 +44,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   public rowGap = input<number>(8);
   public items = model<Item[]>([] as Item[])
 
-  public staticGridHeight = input<SizeProp>('auto');
-  public staticItemHeight = input<SizeProp | '1fr'>('1fr');
+  public gridHeight = input<HeightProp>('auto');
+  public itemMinHeight = input<`${number}${Unit}`>('2em');
 
   // Outputs
   public dragEnter = output<GridEvent>();
@@ -70,8 +70,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     this.registerPropertyEffect('--ddl-grid-rows', this.rows);
     this.registerPropertyEffect('--ddl-grid-col-gap', this.colGap, 'px');
     this.registerPropertyEffect('--ddl-grid-row-gap', this.rowGap, 'px');
-    this.registerPropertyEffect('--ddl-grid-height', this.staticGridHeight);
-    this.registerPropertyEffect('--ddl-grid-item-row-height', this.staticItemHeight);
+    this.registerPropertyEffect('--ddl-grid-prop-height', this.gridHeight);
+    this.registerPropertyEffect('--ddl-grid-item-min-height', this.itemMinHeight);
 
     effect(() => {
       this.items();
@@ -248,7 +248,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       const widthCols = rightX - x + 1;
       item.width.set(Math.max(1, widthCols));
       item.x.set(Math.max(1, (initResizeItem.x + initResizeItem.width) - item.width()));
-    } else {
+    } else if (resizeInfo.horizontal) {
       const widthCols = x - item.x() + 1;
       item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
     }
@@ -260,7 +260,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       const heightCells = bottomY - y + 1;
       item.height.set(Math.max(1, heightCells));
       item.y.set(Math.max(1, (initResizeItem.y + initResizeItem.height) - item.height()));
-    } else {
+    } else if (resizeInfo.vertical) {
       const heightCells = y - item.y() + 1;
       item.height.set(Math.max(1, Math.min(heightCells, this.rows() - item.y() + 1)));
     }
@@ -281,6 +281,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       } else {
         newWidth = event.clientX - initItemRect.left;
       }
+      newHeight = initItemRect.height; // Set the height to the initial height, because we have dynamic row heights
     }
 
     // Calculate height and move item on y-axis
