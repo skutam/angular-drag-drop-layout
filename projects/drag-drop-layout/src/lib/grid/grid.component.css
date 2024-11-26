@@ -3,13 +3,13 @@
   --ddl-grid-columns: 12;
   --ddl-grid-col-gap: 8px;
   --ddl-grid-row-gap: 8px;
-  --ddl-grid-height: auto;
-  --ddl-grid-row-min-height: 50px; /* Minimum row height */
+  --ddl-grid-prop-height: auto;
+  --ddl-grid-item-min-height: 2em; /* Minimum row height */
 
   display: grid;
-  height: var(--ddl-grid-height);
+  height: var(--ddl-grid-prop-height);
   grid-template-columns: repeat(var(--ddl-grid-columns), 1fr);
-  grid-template-rows: repeat(var(--ddl-grid-rows), minmax(var(--ddl-grid-row-min-height), auto)); /* Min height, expand as needed */
+  grid-template-rows: repeat(var(--ddl-grid-rows), minmax(var(--ddl-grid-item-min-height), auto)); /* Min height, expand as needed */
   grid-column-gap: var(--ddl-grid-col-gap);
   grid-row-gap: var(--ddl-grid-row-gap);
 }

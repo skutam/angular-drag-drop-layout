@@ -3,6 +3,7 @@ import {DragDropLayoutModule, Item, itemTrackBy, ResizeType} from '@skutam/drag-
 import {NgForOf, NgIf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {GridItemDroppedEvent} from "../../../drag-drop-layout/src/lib/grid/grid.definitions";
+import {HeightProp} from "../../../drag-drop-layout/src/lib/definitions";
 
 @Component({
   selector: 'app-root',
@@ -16,6 +17,7 @@ export class AppComponent {
   public rows: number = 4;
   public colGap: number = 20;
   public rowGap: number = 20;
+  public gridHeight: HeightProp = 'auto';
 
   public showRemoveItemButton: boolean = true;
   public isResizable: boolean = true;
