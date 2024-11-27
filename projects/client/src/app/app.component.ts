@@ -3,12 +3,14 @@ import {DragDropLayoutModule, Item, itemTrackBy, ResizeType} from '@skutam/drag-
 import {NgForOf, NgIf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {GridItemDroppedEvent} from "../../../drag-drop-layout/src/lib/grid/grid.definitions";
-import {HeightProp} from "../../../drag-drop-layout/src/lib/definitions";
+import {HeightProp, HeightUnit} from "../../../drag-drop-layout/src/lib/definitions";
+import {HeightPickerComponent} from "./height-picker/height-picker.component";
+import {HeightPropPickerComponent} from "./height-prop-picker/height-prop-picker.component";
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [NgForOf, FormsModule, DragDropLayoutModule, NgIf],
+  imports: [NgForOf, FormsModule, DragDropLayoutModule, NgIf, HeightPickerComponent, HeightPropPickerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.less'
 })
@@ -18,6 +20,8 @@ export class AppComponent {
   public colGap: number = 20;
   public rowGap: number = 20;
   public gridHeight: HeightProp = 'auto';
+  public itemMinHeight: HeightUnit | null = null;
+  public itemMinHeightIsNull: boolean = true;
 
   public showRemoveItemButton: boolean = true;
   public isResizable: boolean = true;
@@ -68,6 +72,10 @@ export class AppComponent {
     } else {
       this.resizeTypes.push(resizeType);
     }
+  }
+
+  public updateMinHeight(height: boolean): void {
+    this.itemMinHeight = height ? '50px' : null;
   }
 
   protected readonly itemTrackBy = itemTrackBy;
