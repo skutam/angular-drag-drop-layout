@@ -24,18 +24,28 @@ import {GridService} from "../services/grid.service";
 import {outputToObservable, takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {filter, take, takeUntil} from "rxjs";
 import {clamp} from "../util";
-import {HeightProp, Unit} from "../definitions";
+import {HeightProp, HeightUnit} from "../definitions";
 
 @Component({
   selector: 'ddl-grid',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './grid.component.html',
   styleUrl: './grid.component.css',
+  host: {
+    '[style.display]': '"grid"',
+    '[style.gridTemplateRows]': 'gridTemplateRows',
+  }
 })
 export class GridComponent implements AfterViewInit, OnDestroy {
   public id: string = `${crypto.randomUUID()}`;
 
   @ContentChildren(ItemComponent, {descendants: true}) private itemComponents!: QueryList<ItemComponent>;
+
+  get gridTemplateRows(): string {
+    return this.itemMinHeight() === null
+      ? `repeat(var(--ddl-grid-rows), 1fr)`
+      : `repeat(var(--ddl-grid-rows), minmax(var(--ddl-grid-item-min-height), auto))`;
+  }
 
   // Inputs
   public columns = input<number>(12);
@@ -45,7 +55,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   public items = model<Item[]>([] as Item[])
 
   public gridHeight = input<HeightProp>('auto');
-  public itemMinHeight = input<`${number}${Unit}`>('2em');
+  public itemMinHeight = input<HeightUnit|null>(null);
 
   // Outputs
   public dragEnter = output<GridEvent>();
@@ -159,7 +169,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
   private registerPropertyEffect(property: string, signalValue: InputSignal<any>, append: string = ''): void {
     effect(() => {
-      this.grid.nativeElement.style.setProperty(property, signalValue().toString() + append);
+      this.grid.nativeElement.style.setProperty(property, signalValue()?.toString() + append);
     });
   }
 
@@ -415,8 +425,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    console.error("Should not be here");
-    return -1;
+    return heights.length;
   }
 
   /**

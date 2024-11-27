@@ -42,12 +42,23 @@
         <input type="number" [(ngModel)]="rowGap" placeholder="row gap">
       </label>
   </div>
-  <div class="group-flex-row">
-    <label class="col"> Grid height:
-      <!-- Allow to set grid height, either as string or number with unit -->
-      <input type="text" [(ngModel)]="gridHeight" placeholder="grid height">
-      <small>Allowed values: auto | max-content | min-content | fit-content | stretch | 25px | 5em | 25%;</small>
-    </label>
+  <div class="d-flex">
+    <div class="group-flex-column mr2">
+      <h2>Grid height: {{gridHeight}}</h2>
+      <div class="group-flex-row">
+        <app-height-picker (height)="gridHeight = $event"></app-height-picker>
+      </div>
+    </div>
+    <div class="group-flex-column">
+      <h2>Grid item min height: {{itemMinHeight}}</h2>
+      <div class="group-flex-row">
+        <label class="col">
+          <input type="checkbox" [(ngModel)]="itemMinHeightIsNull"> Minimal item is null
+        </label>
+        <app-height-prop-picker [disabled]="itemMinHeightIsNull" [heightValue]="3" [heightUnit]="'em'" (heightProp)="itemMinHeight = $event"></app-height-prop-picker>
+      </div>
+      <small>When set to null, we have the exact same height for each row, when minimal item height is set we have dynamic height. </small>
+    </div>
   </div>
   <button class="add-button" (click)="addItemTop()">Add Item</button>
 </div>
@@ -57,6 +68,7 @@
           [colGap]="colGap"
           [rowGap]="rowGap"
           [gridHeight]="gridHeight"
+          [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
           (itemDropped)="itemDropped($event)"
           [(items)]="itemsTop">
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"

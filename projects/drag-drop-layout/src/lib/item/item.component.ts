@@ -21,7 +21,6 @@ import {DragHandleDirective} from "../directives/drag-handle.directive";
 import {take, takeUntil} from "rxjs";
 import {GridService} from "../services/grid.service";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
-import {HeightProp} from "../definitions";
 
 /**
  * Item component that can be dragged and resized.
@@ -56,7 +55,6 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public draggable = input(true);
   public resizable = input(true);
   public disabled = input(false);
-  public itemHeight = input<HeightProp>('auto');
 
   // Outputs
   public dragStart = output<ItemDragEvent>();
@@ -108,7 +106,6 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
     this.registerPropertyEffect('--ddl-item-y', this.y);
     this.registerPropertyEffect('--ddl-item-width', this.width);
     this.registerPropertyEffect('--ddl-item-height', this.height);
-    this.registerPropertyEffect('--ddl-item-prop-height', this.height);
     this.element = this.item.nativeElement;
   }
 

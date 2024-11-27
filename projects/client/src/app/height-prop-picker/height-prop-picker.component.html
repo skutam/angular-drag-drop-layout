@@ -1,0 +1,11 @@
+<div class="group-flex-row">
+  <input [disabled]="disabled()" type="number" [(ngModel)]="heightValue" placeholder="height">
+  <select [disabled]="disabled()" [(ngModel)]="heightUnit">
+    <option value="px">px</option>
+    <option value="em">em</option>
+    <option value="rem">rem</option>
+    <option value="%">%</option>
+    <option value="vh">vh</option>
+    <option value="vw">vw</option>
+  </select>
+</div>

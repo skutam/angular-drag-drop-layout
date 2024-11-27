@@ -3,7 +3,6 @@
   --ddl-item-y: 1;
   --ddl-item-width: 1;
   --ddl-item-height: 1;
-  --ddl-item-prop-height: auto;
 
   display: block;
   position: relative;
@@ -12,7 +11,7 @@
   padding: 0;
   border: 0;
   grid-area: var(--ddl-item-y) / var(--ddl-item-x) / span var(--ddl-item-height) / span var(--ddl-item-width);
-  height: var(--ddl-item-prop-height);
+  height: auto;
 }
 
 .resize-handle {
