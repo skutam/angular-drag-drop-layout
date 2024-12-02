@@ -36,10 +36,10 @@
         <input type="number" [(ngModel)]="rows" placeholder="rows">
       </label>
       <label class="col"> Col Gap:
-        <input type="number" [(ngModel)]="colGap" placeholder="col gap">
+        <app-height-prop-picker [heightValue]="20" [heightUnit]="'px'" (heightProp)="colGap = $event"></app-height-prop-picker>
       </label>
       <label class="col"> Row gap:
-        <input type="number" [(ngModel)]="rowGap" placeholder="row gap">
+        <app-height-prop-picker [heightValue]="20" [heightUnit]="'px'" (heightProp)="rowGap = $event"></app-height-prop-picker>
       </label>
   </div>
   <div class="d-flex">
