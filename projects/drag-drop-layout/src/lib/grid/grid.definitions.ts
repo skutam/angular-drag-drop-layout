@@ -19,6 +19,8 @@ export interface GridRectData {
   height: number;
   cellWidth: number;
   cellHeight: number;
+  colGap: number;
+  rowGap: number;
 }
 
 export interface IDragResizeData {
