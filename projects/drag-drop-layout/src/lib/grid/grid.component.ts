@@ -50,8 +50,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   // Inputs
   public columns = input<number>(12);
   public rows = input<number>(3);
-  public colGap= input<number>(8);
-  public rowGap = input<number>(8);
+  public colGap= input<HeightUnit>('8px');
+  public rowGap = input<HeightUnit>('8px');
   public items = model<Item[]>([] as Item[])
 
   public gridHeight = input<HeightProp>('auto');
@@ -78,8 +78,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   ) {
     this.registerPropertyEffect('--ddl-grid-columns', this.columns);
     this.registerPropertyEffect('--ddl-grid-rows', this.rows);
-    this.registerPropertyEffect('--ddl-grid-col-gap', this.colGap, 'px');
-    this.registerPropertyEffect('--ddl-grid-row-gap', this.rowGap, 'px');
+    this.registerPropertyEffect('--ddl-grid-col-gap', this.colGap);
+    this.registerPropertyEffect('--ddl-grid-row-gap', this.rowGap);
     this.registerPropertyEffect('--ddl-grid-prop-height', this.gridHeight);
     this.registerPropertyEffect('--ddl-grid-item-min-height', this.itemMinHeight);
 
@@ -94,9 +94,9 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(({item, dragResizeData, event}) => {
       this._dragging = true;
-      const {cellWidth, cellHeight} = this.calcGridRectData();
-      const width = item.width * cellWidth + (item.width - 1) * this.colGap();
-      const height = item.height * cellHeight + (item.height - 1) * this.rowGap();
+      const {cellWidth, cellHeight, colGap, rowGap} = this.calcGridRectData();
+      const width = item.width * cellWidth + (item.width - 1) * colGap;
+      const height = item.height * cellHeight + (item.height - 1) * rowGap;
       this.gridService.resizePlaceholder(width, height);
       const {x, y} = this.calculateItemPosition(event, item.width, item.height, dragResizeData);
 
@@ -167,9 +167,9 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     this.gridDragItemService.unregisterGrid(this);
   }
 
-  private registerPropertyEffect(property: string, signalValue: InputSignal<any>, append: string = ''): void {
+  private registerPropertyEffect(property: string, signalValue: InputSignal<any>): void {
     effect(() => {
-      this.grid.nativeElement.style.setProperty(property, signalValue()?.toString() + append);
+      this.grid.nativeElement.style.setProperty(property, signalValue()?.toString());
     });
   }
 
@@ -249,10 +249,10 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
   // TODO: When resizing outside the window, the scroll position is not taken into account
   private resizeMove(event: PointerEvent, item: ItemComponent, resizeInfo: ResizeInfo, initResizeItem: Item): void {
-    const {cellWidth, height, width, top, left} = this.calcGridRectData();
+    const {cellWidth, height, width, top, left, colGap, rowGap} = this.calcGridRectData();
 
     const xOnGrid = clamp(1, width, (event.clientX + window.scrollX) - (left + window.scrollX));
-    const x = this.calcGridItemPosition(xOnGrid, cellWidth, this.colGap(), this.columns());
+    const x = this.calcGridItemPosition(xOnGrid, cellWidth, colGap, this.columns());
     if (resizeInfo.left) {
       const rightX = item.x() + item.width() - 1;
       const widthCols = rightX - x + 1;
@@ -264,7 +264,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     }
 
     const yOnGrid = clamp(1, height, (event.clientY + window.scrollY) - (top + window.scrollY));
-    const y = this.calcGridItemPositionY(yOnGrid, this.rowGap());
+    const y = this.calcGridItemPositionY(yOnGrid, rowGap);
     if (resizeInfo.top) {
       const bottomY = item.y() + item.height() - 1;
       const heightCells = bottomY - y + 1;
@@ -339,12 +339,15 @@ export class GridComponent implements AfterViewInit, OnDestroy {
    */
   private calcGridRectData(): GridRectData {
     const gridRect = this.grid.nativeElement.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(this.grid.nativeElement);
+    const colGap = parseInt(computedStyle.columnGap, 10);
+    const rowGap = parseInt(computedStyle.rowGap, 10);
 
     const gridWidth = gridRect.width;
     const gridHeight = gridRect.height;
 
-    const cellWidth = (gridWidth - this.colGap() * (this.columns() - 1)) / this.columns();
-    const cellHeight = (gridHeight - this.rowGap() * (this.rows() - 1)) / this.rows();
+    const cellWidth = (gridWidth - colGap * (this.columns() - 1)) / this.columns();
+    const cellHeight = (gridHeight - rowGap * (this.rows() - 1)) / this.rows();
 
     return {
       top: gridRect.top,
@@ -352,7 +355,9 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       width: gridWidth,
       height: gridHeight,
       cellWidth,
-      cellHeight
+      cellHeight,
+      colGap,
+      rowGap,
     }
   }
 
@@ -384,8 +389,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     const xOnGrid = clamp(1, gridRectData.width, (event.clientX + window.scrollX) - (gridRectData.left + window.scrollX));
     const yOnGrid = clamp(1, gridRectData.height, (event.clientY + window.scrollY) - (gridRectData.top + window.scrollY));
 
-    const x = this.calcGridItemPosition(xOnGrid, gridRectData.cellWidth, this.colGap(), this.columns());
-    const y = this.calcGridItemPositionY(yOnGrid, this.rowGap());
+    const x = this.calcGridItemPosition(xOnGrid, gridRectData.cellWidth, gridRectData.colGap, this.columns());
+    const y = this.calcGridItemPositionY(yOnGrid, gridRectData.rowGap);
 
     return {x, y};
   }

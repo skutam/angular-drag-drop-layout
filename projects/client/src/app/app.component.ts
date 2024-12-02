@@ -26,12 +26,12 @@ export class AppComponent {
   /**
    * The width of the grid in pixels.
    */
-  public colGap: number = 20;
+  public colGap: HeightUnit = '20px';
 
   /**
    * The height of the grid in pixels.
    */
-  public rowGap: number = 20;
+  public rowGap: HeightUnit = '20px';
 
   /**
    * The height of the grid.
