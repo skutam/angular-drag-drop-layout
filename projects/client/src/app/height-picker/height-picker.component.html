@@ -8,5 +8,5 @@
     </label>
   </div>
 
-  <app-height-prop-picker (heightProp)="heightProp()" [disabled]="!valueMode()"></app-height-prop-picker>
+  <app-height-prop-picker (heightProp)="heightProp.set($event)" [disabled]="!valueMode()"></app-height-prop-picker>
 </div>
