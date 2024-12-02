@@ -88,8 +88,8 @@
        class="drag-item"
        [draggable]="true"
        [disabled]="i == 1"
-       [width]="2"
-       [height]="2"
+       [width]="columns"
+       [height]="1"
        [dragData]="i"
        *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
 </div>
