@@ -1,13 +1,7 @@
 import {DestroyRef, Inject, Injectable, NgZone} from '@angular/core';
 import {Item} from "../item/item.definitions";
 import {ItemComponent} from "../item/item.component";
-import {
-  auditTime,
-  filter,
-  fromEvent,
-  Observable,
-  Subject,
-} from "rxjs";
+import {auditTime, combineLatest, filter, fromEvent, merge, Observable, Subject,} from "rxjs";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {GridComponent} from "../grid/grid.component";
 import {GridDragItemService} from "./grid-drag-item.service";
@@ -39,11 +33,16 @@ export class GridService extends Placeholder {
     this.pointerEnd$ = this.pointerEndSubject.asObservable();
 
     this.ngZone.runOutsideAngular(() => {
-      fromEvent<PointerEvent>(this.document, 'pointermove').pipe(
+      merge(
+        combineLatest([
+          fromEvent<PointerEvent>(this.document, 'pointermove'),
+          fromEvent<Event>(this.document, 'scroll')
+        ])
+      ).pipe(
         auditTime(10),
         takeUntilDestroyed(this.destroyRef),
         filter(() => this.dragResizeData !== null),
-      ).subscribe((event: PointerEvent) => {
+      ).subscribe(([event, __]) => {
         // Calculate movement only when dragging, resize handles it on its own
         if (this.dragResizeData!.dragging) {
           this.handleGridEnterLeaveEvents(event);
