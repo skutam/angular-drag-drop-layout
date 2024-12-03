@@ -1,8 +1,20 @@
 # Changelog
-All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## [1.2.0](https://github.com/skutam/angular-drag-drop-layout/compare/v1.1.1...v1.2.0) (2024-12-03)
+
+
+### Features
+
+* Add support for scrolling on window element ([#32](https://github.com/skutam/angular-drag-drop-layout/issues/32)) ([6ad3679](https://github.com/skutam/angular-drag-drop-layout/commit/6ad3679c4a3a31aba1b4c4c9ebd2467bfe73c278))
+* Dynamic grid height, resize recalculation ([#28](https://github.com/skutam/angular-drag-drop-layout/issues/28)) ([d5e9170](https://github.com/skutam/angular-drag-drop-layout/commit/d5e917081eb6290b5e97b385b889389e63099a6b))
+* Enhanced col and row gaps, to support more types of units ([#30](https://github.com/skutam/angular-drag-drop-layout/issues/30)) ([08d7788](https://github.com/skutam/angular-drag-drop-layout/commit/08d7788157d6c0d16e545d2388130e4a7b45f07b))
+
+
+### Bug Fixes
+
+* Fixed the DEMO page height setting bug ([#35](https://github.com/skutam/angular-drag-drop-layout/issues/35)) ([d676a21](https://github.com/skutam/angular-drag-drop-layout/commit/d676a21d3603bec976e0acb3846bc69d3af3eeda))
 
 ## 1.1.1 - 2024-09-08
 
