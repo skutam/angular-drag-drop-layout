@@ -13,7 +13,8 @@
     "watch:lib": "ng build drag-drop-layout --watch --configuration development",
     "serve:client": "ng serve client --port 80 --host 0.0.0.0",
     "test": "ng test",
-    "serve:ssr:client": "node dist/client/server/server.mjs"
+    "serve:ssr:client": "node dist/client/server/server.mjs",
+    "release": "standard-version"
   },
   "dependencies": {
     "@angular/animations": "^18.1.4",
@@ -40,11 +41,12 @@
     "@types/node": "^18.18.0",
     "jasmine-core": "~5.1.0",
     "karma": "~6.4.0",
-    "karma-coverage": "~2.2.0",
     "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "ng-packagr": "^18.0.0",
+    "standard-version": "^9.5.0",
     "typescript": "~5.4.2"
   }
 }
