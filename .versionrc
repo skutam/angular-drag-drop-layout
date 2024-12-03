@@ -1,0 +1,21 @@
+{
+    "path": ".",
+    "tag-prefix": "v",
+    "releaseCommitMessageFormat": "chore(release): angular-grid-layout@{{currentTag}}",
+    "packageFiles": [
+      {
+        "filename": "projects/drag-drop-layout/package.json",
+        "type": "json"
+      }
+    ],
+    "bumpFiles": [
+      {
+        "filename": "package.json",
+        "type": "json"
+      },
+      {
+        "filename": "projects/drag-drop-layout/package.json",
+        "type": "json"
+      }
+    ]
+}
