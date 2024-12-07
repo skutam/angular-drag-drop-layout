@@ -4,6 +4,13 @@ import {Item} from "../item/item.definitions";
 import {GridService} from "../services/grid.service";
 import {take, takeUntil} from "rxjs";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import {IPosition} from "../definitions";
+import {getScrollOffset} from "../util";
+
+export interface DragItemDragEvent {
+  event: IPosition;
+  scroll: IPosition;
+}
 
 @Directive({
   selector: '[ddlDragItem]',
@@ -23,11 +30,12 @@ export class DragItemDirective implements OnDestroy {
   public width = input(1);
   public height = input(1);
   public dragData = input<any>();
+  public scrollableElement = input<HTMLElement | Document | null>(null);
 
   // Outputs
-  public dragStart = output<PointerEvent>();
-  public dragMove = output<PointerEvent>();
-  public dragEnd = output<PointerEvent>();
+  public dragStart = output<DragItemDragEvent>();
+  public dragMove = output<DragItemDragEvent>();
+  public dragEnd = output<DragItemDragEvent>();
 
   @HostListener('pointerdown', ['$event'])
   public startDrag(event: PointerEvent) {
@@ -45,18 +53,21 @@ export class DragItemDirective implements OnDestroy {
 
     event.preventDefault();
 
-    this.dragStart.emit(event);
-    this.gridService.startItemDrag(this.getItem(), this.dragItem.nativeElement, event);
+    this.dragStart.emit({
+      event,
+      scroll: getScrollOffset(this.scrollableElement()),
+    });
+    this.gridService.startItemDrag(this.getItem(), this.dragItem.nativeElement, event, this.scrollableElement());
 
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event}) => this.dragMove.emit(event));
+    ).subscribe(({event, scroll}) => this.dragMove.emit({event, scroll}));
 
     this.gridService.pointerEnd$.pipe(
       takeUntilDestroyed(this.destroyRef),
       take(1),
-    ).subscribe(({event}) => this.dragEnd.emit(event));
+    ).subscribe(({event, scroll}) => this.dragEnd.emit({event, scroll}));
   }
 
   public constructor(

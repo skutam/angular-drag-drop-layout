@@ -19,12 +19,12 @@ import {
 import {ItemComponent} from "../item/item.component";
 import {getResizeInfo, Item, ResizeInfo, ResizeType} from "../item/item.definitions";
 import {GridDragItemService} from "../services/grid-drag-item.service";
-import {GridEvent, GridItemDroppedEvent, GridRectData, IDragResizeData} from "./grid.definitions";
+import {GridEvent, GridItemDroppedEvent, GridRectData, IGridPointerEvent} from "./grid.definitions";
 import {GridService} from "../services/grid.service";
 import {outputToObservable, takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {filter, take, takeUntil} from "rxjs";
 import {clamp} from "../util";
-import {HeightProp, HeightUnit} from "../definitions";
+import {HeightProp, HeightUnit, IPosition} from "../definitions";
 
 @Component({
   selector: 'ddl-grid',
@@ -56,6 +56,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
   public gridHeight = input<HeightProp>('auto');
   public itemMinHeight = input<HeightUnit|null>(null);
+  public scrollableElement = input<HTMLElement | Document | null>(null);
 
   // Outputs
   public dragEnter = output<GridEvent>();
@@ -92,13 +93,14 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
     outputToObservable(this.dragEnter).pipe(
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({item, dragResizeData, event}) => {
+    ).subscribe((gridEvent) => {
       this._dragging = true;
+      const item = gridEvent.item;
       const {cellWidth, cellHeight, colGap, rowGap} = this.calcGridRectData();
       const width = item.width * cellWidth + (item.width - 1) * colGap;
       const height = item.height * cellHeight + (item.height - 1) * rowGap;
       this.gridService.resizePlaceholder(width, height);
-      const {x, y} = this.calculateItemPosition(event, item.width, item.height, dragResizeData);
+      const {x, y} = this.calculateItemPosition(gridEvent, item.width, item.height);
 
       const newItem = new Item(item.id, x, y, item.width, item.height, item.data);
 
@@ -122,30 +124,30 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       filter(() => this._dragging),
-    ).subscribe(({event, dragResizeData}) => this.dragMove(event, dragResizeData));
+    ).subscribe((gridPointerEvent) => this.dragMove(gridPointerEvent));
 
     this.gridService.pointerEnd$.pipe(
       takeUntilDestroyed(this.destroyRef),
       filter(() => this._dragging),
-    ).subscribe(({dragResizeData, event}) => {
+    ).subscribe((gridPointerEvent) => {
       const dragItem = this.items().find((i) => i.id === 'dragItem');
 
       // Dragging new ddl-item into the grid
       if (dragItem) {
         const oldItems = this.items().filter((i) => i.id !== 'dragItem');
-        const {x, y} = this.calculateItemPosition(event, dragItem.width, dragItem.height, dragResizeData);
+        const {x, y} = this.calculateItemPosition(gridPointerEvent, dragItem.width, dragItem.height);
         const item = new Item(null, x, y, dragItem.width, dragItem.height, dragItem.data);
         this.items.set([...oldItems, item]);
         this.itemDropped.emit({
-          event,
+          event: gridPointerEvent.event,
           item,
         });
       } else {
         // Emit itemDropped event when dragging from one grid to another
-        if (dragResizeData.fromGrid !== dragResizeData.currentGrid && dragResizeData.currentGrid === this) {
+        if (gridPointerEvent.dragResizeData.fromGrid !== gridPointerEvent.dragResizeData.currentGrid && gridPointerEvent.dragResizeData.currentGrid === this) {
           this.itemDropped.emit({
-            event,
-            item: dragResizeData.item,
+            event: gridPointerEvent.event,
+            item: gridPointerEvent.dragResizeData.item,
           });
         }
         this.items.set(this.itemComponents.map(c => c.getItem()));
@@ -190,6 +192,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       item.width.set(itemData.width);
       item.height.set(itemData.height);
       item.data.set(itemData.data);
+      item.scrollableElement.set(this.scrollableElement());
 
       this.itemComponentSubscriptions.push(
         // Register drag events
@@ -199,7 +202,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
           this.gridService.startDrag(this, item.getItem(), item, event,{
             x: item.x() - itemPosInGrid.x,
             y: item.y() - itemPosInGrid.y,
-          });
+          }, this.scrollableElement());
         }),
         // Register resize events
         item.resizeStart.subscribe(({resizeType, event}) => this.resizeStart(item, event, resizeType)),
@@ -210,19 +213,19 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   /**
    * Moves the item while dragging
    */
-  private dragMove(event: PointerEvent, dragResizeData: IDragResizeData): void {
-    const item = this.itemComponents.find((item) => item.id === dragResizeData.item.id);
+  private dragMove(gridPointerEvent: IGridPointerEvent): void {
+    const item = this.itemComponents.find((item) => item.id === gridPointerEvent.dragResizeData.item.id);
     if (!item) {
       return;
     }
 
-    const {x, y} = this.calculateItemPosition(event, item.width(), item.height(), dragResizeData);
+    const {x, y} = this.calculateItemPosition(gridPointerEvent, item.width(), item.height());
     item.x.set(x);
     item.y.set(y);
   }
 
-  private resizeStart(item: ItemComponent, event: PointerEvent, resizeType: ResizeType): void {
-    this.gridService.startResize(item.getItem(), item, event);
+  private resizeStart(item: ItemComponent, mousePos: IPosition, resizeType: ResizeType): void {
+    this.gridService.startResize(item.getItem(), item, mousePos, this.scrollableElement());
 
     const initResizeItem = item.getItem();
     const resizeInfo = getResizeInfo(resizeType);
@@ -230,12 +233,12 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event}) => {
+    ).subscribe(({event, scroll}) => {
       this.resizeMove(event, item, resizeInfo, initResizeItem);
 
       // Move placeholder after rendering the item in the grid
       setTimeout(() => {
-        const {newWidth, newHeight, newDeltaX, newDeltaY} = this.resizeCalculate(event, resizeInfo, item.element.getBoundingClientRect());
+        const {newWidth, newHeight, newDeltaX, newDeltaY} = this.resizeCalculate(event, scroll, resizeInfo, item.element.getBoundingClientRect());
         this.gridService.resizePlaceholder(newWidth, newHeight);
         this.gridService.movePlaceholder(newDeltaX, newDeltaY);
       }, 0);
@@ -248,10 +251,10 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   }
 
   // TODO: When resizing outside the window, the scroll position is not taken into account
-  private resizeMove(event: PointerEvent, item: ItemComponent, resizeInfo: ResizeInfo, initResizeItem: Item): void {
+  private resizeMove(mousePos: IPosition, item: ItemComponent, resizeInfo: ResizeInfo, initResizeItem: Item): void {
     const {cellWidth, height, width, top, left, colGap, rowGap} = this.calcGridRectData();
 
-    const xOnGrid = clamp(1, width, (event.clientX + window.scrollX) - (left + window.scrollX));
+    const xOnGrid = clamp(1, width, mousePos.x - left);
     const x = this.calcGridItemPosition(xOnGrid, cellWidth, colGap, this.columns());
     if (resizeInfo.left) {
       const rightX = item.x() + item.width() - 1;
@@ -263,7 +266,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
     }
 
-    const yOnGrid = clamp(1, height, (event.clientY + window.scrollY) - (top + window.scrollY));
+    const yOnGrid = clamp(1, height, mousePos.y - top);
     const y = this.calcGridItemPositionY(yOnGrid, rowGap);
     if (resizeInfo.top) {
       const bottomY = item.y() + item.height() - 1;
@@ -276,7 +279,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private resizeCalculate(event:PointerEvent, resizeInfo: ResizeInfo, initItemRect: DOMRect): {newWidth: number, newHeight: number, newDeltaX: number, newDeltaY: number} {
+  private resizeCalculate(mousePos: IPosition, scroll: IPosition, resizeInfo: ResizeInfo, initItemRect: DOMRect): {newWidth: number, newHeight: number, newDeltaX: number, newDeltaY: number} {
     let newWidth = this.gridService.getItem().width;
     let newHeight = this.gridService.getItem().height;
     let newDeltaX = this.gridService.getItem().x;
@@ -286,10 +289,10 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     if (resizeInfo.horizontal) {
       // Resize width and move item on x-axis
       if (resizeInfo.left) {
-        newDeltaX = Math.min(event.clientX + window.scrollX, initItemRect.right + window.scrollX);
-        newWidth = initItemRect.right - event.clientX;
+        newDeltaX = Math.min(mousePos.x + scroll.x, initItemRect.right + scroll.x);
+        newWidth = initItemRect.right - mousePos.x;
       } else {
-        newWidth = event.clientX - initItemRect.left;
+        newWidth = mousePos.x - initItemRect.left;
       }
       newHeight = initItemRect.height; // Set the height to the initial height, because we have dynamic row heights
     }
@@ -298,10 +301,10 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     if (resizeInfo.vertical) {
       // Resize height and move item on y-axis
       if (resizeInfo.top) {
-        newDeltaY = Math.min(event.clientY + window.scrollY, initItemRect.bottom + window.scrollY);
-        newHeight = initItemRect.bottom - event.clientY;
+        newDeltaY = Math.min(mousePos.y + scroll.y, initItemRect.bottom + scroll.y);
+        newHeight = initItemRect.bottom - mousePos.y;
       } else {
-        newHeight = event.clientY - initItemRect.top;
+        newHeight = mousePos.y - initItemRect.top;
       }
     }
 
@@ -363,31 +366,30 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
   /**
    * Calculates the new x and y position of the item being dragged, making sure it doesn't go out of bounds
-   * @param event The pointer event
+   * @param gridPointerEvent The grid pointer event
    * @param width The width of the item being dragged
    * @param height The height of the item being dragged
-   * @param dragResizeData The drag resize data
    * @private
    */
-  private calculateItemPosition(event: PointerEvent, width: number, height: number, dragResizeData: IDragResizeData): {x: number, y: number} {
-    const {x, y} = this.calcItemPositionInGrid(event);
+  private calculateItemPosition(gridPointerEvent: IGridPointerEvent, width: number, height: number): {x: number, y: number} {
+    const {x, y} = this.calcItemPositionInGrid(gridPointerEvent.event);
 
-    const newX = clamp(1, this.columns() - (width - Math.abs(dragResizeData.itemOffset.x)) + 1, x + dragResizeData.itemOffset.x);
-    const newY = clamp(1, this.rows() - (height - Math.abs(dragResizeData.itemOffset.y)) + 1, y + dragResizeData.itemOffset.y);
+    const newX = clamp(1, this.columns() - (width - Math.abs(gridPointerEvent.dragResizeData.itemOffset.x)) + 1, x + gridPointerEvent.dragResizeData.itemOffset.x);
+    const newY = clamp(1, this.rows() - (height - Math.abs(gridPointerEvent.dragResizeData.itemOffset.y)) + 1, y + gridPointerEvent.dragResizeData.itemOffset.y);
     return {x: newX, y: newY};
   }
 
   /**
    * Calculates the x and y position of the pointer relative to the grid, 0,0 is the top left corner of the grid
-   * @param event
+   * @param mousePos
    * @private
    */
-  private calcItemPositionInGrid(event: PointerEvent): {x: number, y: number} {
+  private calcItemPositionInGrid(mousePos: IPosition): IPosition {
     const gridRectData = this.calcGridRectData();
 
     // Calculate the x and y position of the pointer relative to the grid, 0,0 is the top left corner of the grid
-    const xOnGrid = clamp(1, gridRectData.width, (event.clientX + window.scrollX) - (gridRectData.left + window.scrollX));
-    const yOnGrid = clamp(1, gridRectData.height, (event.clientY + window.scrollY) - (gridRectData.top + window.scrollY));
+    const xOnGrid = clamp(1, gridRectData.width, mousePos.x - gridRectData.left);
+    const yOnGrid = clamp(1, gridRectData.height, mousePos.y - gridRectData.top);
 
     const x = this.calcGridItemPosition(xOnGrid, gridRectData.cellWidth, gridRectData.colGap, this.columns());
     const y = this.calcGridItemPositionY(yOnGrid, gridRectData.rowGap);

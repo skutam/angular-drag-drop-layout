@@ -1,13 +1,27 @@
 import {DestroyRef, Inject, Injectable, NgZone} from '@angular/core';
 import {Item} from "../item/item.definitions";
 import {ItemComponent} from "../item/item.component";
-import {auditTime, combineLatest, filter, fromEvent, merge, Observable, Subject,} from "rxjs";
+import {
+  auditTime,
+  combineLatest,
+  filter,
+  fromEvent,
+  map,
+  merge,
+  Observable,
+  of,
+  startWith,
+  Subject,
+  Subscription,
+} from "rxjs";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {GridComponent} from "../grid/grid.component";
 import {GridDragItemService} from "./grid-drag-item.service";
 import {Placeholder} from "../placeholder";
 import {IDragResizeData, IGridPointerEvent} from "../grid/grid.definitions";
 import {DOCUMENT} from "@angular/common";
+import {IPosition} from "../definitions";
+import {getScrollOffset} from "../util";
 
 
 @Injectable({
@@ -18,6 +32,7 @@ export class GridService extends Placeholder {
 
   public pointerMove$: Observable<IGridPointerEvent>;
   private pointerMoveSubject: Subject<IGridPointerEvent> = new Subject<IGridPointerEvent>();
+  private pointerMoveSubscription: Subscription | null = null;
 
   public pointerEnd$: Observable<IGridPointerEvent>;
   private pointerEndSubject: Subject<IGridPointerEvent> = new Subject<IGridPointerEvent>();
@@ -33,48 +48,86 @@ export class GridService extends Placeholder {
     this.pointerEnd$ = this.pointerEndSubject.asObservable();
 
     this.ngZone.runOutsideAngular(() => {
-      merge(
-        combineLatest([
-          fromEvent<PointerEvent>(this.document, 'pointermove'),
-          fromEvent<Event>(this.document, 'scroll')
-        ])
-      ).pipe(
-        auditTime(10),
-        takeUntilDestroyed(this.destroyRef),
-        filter(() => this.dragResizeData !== null),
-      ).subscribe(([event, __]) => {
-        // Calculate movement only when dragging, resize handles it on its own
-        if (this.dragResizeData!.dragging) {
-          this.handleGridEnterLeaveEvents(event);
-
-          const newDeltaX = event.clientX + this.dragResizeData!.dragOffset.x + window.scrollX;
-          const newDeltaY = event.clientY + this.dragResizeData!.dragOffset.y + window.scrollY;
-          this.movePlaceholder(newDeltaX, newDeltaY);
-        }
-
-        this.pointerMoveSubject.next({
-          event,
-          dragResizeData: this.dragResizeData!,
-        });
-      });
-
       fromEvent<PointerEvent>(this.document, 'pointerup').pipe(
         takeUntilDestroyed(this.destroyRef),
         filter(() => this.dragResizeData !== null),
       ).subscribe((event: PointerEvent) => {
         this.destroyPlaceholder();
         this.pointerEndSubject.next({
+          event: {
+            x: event.clientX,
+            y: event.clientY,
+          },
+          dragResizeData: this.dragResizeData!,
+          scroll: getScrollOffset(this.dragResizeData!.scrollElement),
+        });
+
+        this.dragResizeData = null;
+        this.pointerMoveSubscription?.unsubscribe();
+        this.pointerMoveSubscription = null;
+      });
+    });
+  }
+
+  /**
+   * Register the pointer move event, and emit the pointer move event when the pointer is moved. We are registering
+   * it each time a drag starts, because we need to know when the pointer is moved, and what the scrollable element is.
+   * @param scrollableElement
+   * @private
+   */
+  private registerPointerMoveEvent(scrollableElement: HTMLElement | Document | null): void {
+    this.ngZone.runOutsideAngular(() => {
+      let observable: Observable<[PointerEvent, IPosition]>;
+      if (scrollableElement === null) {
+        observable = merge(
+          combineLatest([
+            fromEvent<PointerEvent>(this.document, 'pointermove').pipe(
+              auditTime(10),
+              takeUntilDestroyed(this.destroyRef),
+              filter(() => this.dragResizeData !== null),
+            ),
+            of({x: 0, y: 0}),
+          ])
+        );
+      } else {
+        observable = merge(
+          combineLatest([
+            fromEvent<PointerEvent>(this.document, 'pointermove').pipe(
+              auditTime(10),
+              takeUntilDestroyed(this.destroyRef),
+              filter(() => this.dragResizeData !== null),
+            ),
+            fromEvent<Event>(scrollableElement, 'scroll').pipe(
+              auditTime(10),
+              map(() => getScrollOffset(scrollableElement)),
+              startWith(getScrollOffset(scrollableElement)),
+            )
+          ])
+        );
+      }
+
+      this.pointerMoveSubscription = observable.subscribe(([event, scroll]) => {
+        // Calculate movement only when dragging, resize handles it on its own
+        if (this.dragResizeData!.dragging) {
+          this.handleGridEnterLeaveEvents(event);
+
+          const newDeltaX = event.clientX + this.dragResizeData!.dragOffset.x + scroll.x;
+          const newDeltaY = event.clientY + this.dragResizeData!.dragOffset.y + scroll.y;
+          this.movePlaceholder(newDeltaX, newDeltaY);
+        }
+
+        this.pointerMoveSubject.next({
           event,
           dragResizeData: this.dragResizeData!,
+          scroll,
         });
-        this.dragResizeData = null;
       });
     });
   }
 
   public startDrag(fromGrid: GridComponent | null, item: Item,
-                   itemComponent: ItemComponent, event: PointerEvent,
-                   itemOffset: { x: number, y: number }): void {
+                   itemComponent: ItemComponent, mousePos: IPosition,
+                   itemOffset: { x: number, y: number }, scrollElement: HTMLElement | Document | null): void {
     const {width, height, x, y} = itemComponent.element.getBoundingClientRect();
     this.createPlaceholder(width, height, x + window.scrollX, y + window.scrollY);
 
@@ -86,14 +139,17 @@ export class GridService extends Placeholder {
       currentGrid: null,
       previousGrid: null,
       dragOffset: {
-        x: x - event.clientX,
-        y: y - event.clientY,
+        x: x - mousePos.x,
+        y: y - mousePos.y,
       },
-      itemOffset
+      itemOffset,
+      scrollElement,
     };
+
+    this.registerPointerMoveEvent(scrollElement);
   }
 
-  public startItemDrag(item: Item, element: HTMLElement, event: PointerEvent) {
+  public startItemDrag(item: Item, element: HTMLElement, event: PointerEvent, scrollElement: HTMLElement | Document | null): void {
     const {width, height, x, y} = element.getBoundingClientRect();
     this.createPlaceholder(width, height, x + window.scrollX, y + window.scrollY);
 
@@ -112,10 +168,13 @@ export class GridService extends Placeholder {
         x: 0,
         y: 0,
       },
+      scrollElement,
     };
+
+    this.registerPointerMoveEvent(scrollElement);
   }
 
-  public startResize(item: Item, itemComponent: ItemComponent, event: PointerEvent): void {
+  public startResize(item: Item, itemComponent: ItemComponent, mousePos: IPosition, scrollElement: HTMLElement | Document | null): void {
     const {width, height, x, y} = itemComponent.element.getBoundingClientRect();
     this.createPlaceholder(width, height, x + window.scrollX, y + window.scrollY);
 
@@ -127,14 +186,17 @@ export class GridService extends Placeholder {
       currentGrid: null,
       previousGrid: null,
       dragOffset: {
-        x: x - event.clientX,
-        y: y - event.clientY,
+        x: x - mousePos.x,
+        y: y - mousePos.y,
       },
       itemOffset: {
         x: 0,
         y: 0,
       },
-    }
+      scrollElement,
+    };
+
+    this.registerPointerMoveEvent(scrollElement);
   }
 
   /**
@@ -156,6 +218,7 @@ export class GridService extends Placeholder {
       event,
       item: this.dragResizeData!.item,
       dragResizeData: this.dragResizeData!,
+      scroll: getScrollOffset(this.dragResizeData!.scrollElement),
     });
 
     // Find the new grid and notify it
@@ -164,6 +227,7 @@ export class GridService extends Placeholder {
       event,
       item: this.dragResizeData!.item,
       dragResizeData: this.dragResizeData!,
+      scroll: getScrollOffset(this.dragResizeData!.scrollElement),
     });
   }
 }

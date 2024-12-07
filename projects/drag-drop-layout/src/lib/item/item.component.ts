@@ -21,6 +21,7 @@ import {DragHandleDirective} from "../directives/drag-handle.directive";
 import {take, takeUntil} from "rxjs";
 import {GridService} from "../services/grid.service";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import {getScrollOffset} from "../util";
 
 /**
  * Item component that can be dragged and resized.
@@ -49,6 +50,10 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
   public width = signal(1);
   public height = signal(1);
   public data = signal<any>(undefined);
+  /**
+   * The element that can be scrolled to calculate the scroll offset. It is the same as the grid's scrollable element.
+   */
+  public scrollableElement = signal<HTMLElement | Document | null>(null);
 
   // Inputs
   public resizeTypes = input<ResizeType[]>(['bottom-left']);
@@ -146,25 +151,28 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
     this.dragStart.emit({
       item: this.getItem(),
       event: event,
+      scroll: getScrollOffset(this.scrollableElement()),
     });
 
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event}) => {
+    ).subscribe(({event, scroll}) => {
       this.dragMove.emit({
         item: this.getItem(),
         event: event,
+        scroll: scroll,
       });
     });
 
     this.gridService.pointerEnd$.pipe(
       takeUntilDestroyed(this.destroyRef),
       take(1),
-    ).subscribe(({event}) => {
+    ).subscribe(({event, scroll}) => {
       this.dragEnd.emit({
         item: this.getItem(),
         event: event,
+        scroll: scroll,
       });
     });
   }
@@ -177,24 +185,27 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
       item: this.getItem(),
       event: event,
       resizeType: resizeType,
+      scroll: getScrollOffset(this.scrollableElement()),
     });
 
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event}) => this.resizeMove.emit({
+    ).subscribe(({event, scroll}) => this.resizeMove.emit({
       item: this.getItem(),
       event: event,
       resizeType: resizeType,
+      scroll,
     }))
 
     this.gridService.pointerEnd$.pipe(
       takeUntilDestroyed(this.destroyRef),
       take(1),
-    ).subscribe(({event}) => this.resizeEnd.emit({
+    ).subscribe(({event, scroll}) => this.resizeEnd.emit({
       item: this.getItem(),
       event: event,
       resizeType: resizeType,
+      scroll,
     }));
   }
 
