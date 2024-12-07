@@ -1,14 +1,13 @@
 import {GridComponent} from "./grid.component";
 import {Item} from "../item/item.definitions";
+import {IPosition} from "../definitions";
 
-export interface GridEvent {
-  event: PointerEvent;
+export interface GridEvent extends IGridPointerEvent {
   item: Item;
-  dragResizeData: IDragResizeData;
 }
 
 export interface GridItemDroppedEvent {
-  event: PointerEvent;
+  event: IPosition;
   item: Item;
 }
 
@@ -37,10 +36,12 @@ export interface IDragResizeData {
   itemOffset: {
     x: number;
     y: number;
-  }
+  };
+  scrollElement: HTMLElement | Document | null;
 }
 
 export interface IGridPointerEvent {
-  event: PointerEvent;
+  event: IPosition;
   dragResizeData: IDragResizeData;
+  scroll: IPosition;
 }

@@ -70,6 +70,7 @@
           [gridHeight]="gridHeight"
           [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
           (itemDropped)="itemDropped($event)"
+          [scrollableElement]="document"
           [(items)]="itemsTop">
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"
             [resizable]="isResizable"
@@ -91,6 +92,7 @@
        [width]="columns"
        [height]="1"
        [dragData]="i"
+       [scrollableElement]="document"
        *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
 </div>
 
