@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.2.1](https://github.com/skutam/angular-drag-drop-layout/compare/v1.2.0...v1.2.1) (2024-12-11)
+
+
+### Bug Fixes
+
+* Fix placeholder calculation with new dynamic row height ([#42](https://github.com/skutam/angular-drag-drop-layout/issues/42)) ([26c0cb2](https://github.com/skutam/angular-drag-drop-layout/commit/26c0cb2ae9b25c382e7c6504c4e4436662d766dc))
+* Fix resize, drag issue. Add scroll element support ([#40](https://github.com/skutam/angular-drag-drop-layout/issues/40)) ([7765dc5](https://github.com/skutam/angular-drag-drop-layout/commit/7765dc5f10ac2f032f1a0e8dd69959c116eadf41))
+
 ## [1.2.0](https://github.com/skutam/angular-drag-drop-layout/compare/v1.1.1...v1.2.0) (2024-12-03)
 
 
