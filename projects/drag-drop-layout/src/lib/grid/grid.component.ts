@@ -196,7 +196,6 @@ export class GridComponent implements AfterViewInit, OnDestroy {
 
       this.itemComponentSubscriptions.push(
         // Register drag events
-        // TODO: When dragging outside the window, the scroll position is not taken into account
         item.dragStart.subscribe(({event}) => {
           const itemPosInGrid = this.calcItemPositionInGrid(event);
           this.gridService.startDrag(this, item.getItem(), item, event,{
@@ -234,11 +233,13 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
     ).subscribe(({event, scroll}) => {
-      this.resizeMove(event, item, resizeInfo, initResizeItem);
+      const gridRect = this.calcGridRectData();
+      this.resizeMove(event, item, resizeInfo, initResizeItem, gridRect);
 
       // Move placeholder after rendering the item in the grid
       setTimeout(() => {
-        const {newWidth, newHeight, newDeltaX, newDeltaY} = this.resizeCalculate(event, scroll, resizeInfo, item.element.getBoundingClientRect());
+        const initItemRect = item.element.getBoundingClientRect();
+        let {newWidth, newHeight, newDeltaX, newDeltaY} = this.resizeCalculate(event, scroll, resizeInfo, item, initItemRect, gridRect);
         this.gridService.resizePlaceholder(newWidth, newHeight);
         this.gridService.movePlaceholder(newDeltaX, newDeltaY);
       }, 0);
@@ -251,11 +252,18 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   }
 
   // TODO: When resizing outside the window, the scroll position is not taken into account
-  private resizeMove(mousePos: IPosition, item: ItemComponent, resizeInfo: ResizeInfo, initResizeItem: Item): void {
-    const {cellWidth, height, width, top, left, colGap, rowGap} = this.calcGridRectData();
-
-    const xOnGrid = clamp(1, width, mousePos.x - left);
-    const x = this.calcGridItemPosition(xOnGrid, cellWidth, colGap, this.columns());
+  /**
+   * Moves the item while resizing
+   * @param mousePos The position of the mouse pointer on the screen
+   * @param item The item component being resized
+   * @param resizeInfo The resize info, which sides are being resized
+   * @param initResizeItem The initial item being resized
+   * @param gridRect The bounding rect of the grid
+   * @private
+   */
+  private resizeMove(mousePos: IPosition, item: ItemComponent, resizeInfo: ResizeInfo, initResizeItem: Item, gridRect: GridRectData): void {
+    const xOnGrid = clamp(1, gridRect.width, mousePos.x - gridRect.left);
+    const x = this.calcGridItemPosition(xOnGrid, gridRect.cellWidth, gridRect.colGap, this.columns());
     if (resizeInfo.left) {
       const rightX = item.x() + item.width() - 1;
       const widthCols = rightX - x + 1;
@@ -266,8 +274,8 @@ export class GridComponent implements AfterViewInit, OnDestroy {
       item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
     }
 
-    const yOnGrid = clamp(1, height, mousePos.y - top);
-    const y = this.calcGridItemPositionY(yOnGrid, rowGap);
+    const yOnGrid = clamp(1, gridRect.height, mousePos.y - gridRect.top);
+    const y = this.calcGridItemPositionY(yOnGrid, gridRect.rowGap);
     if (resizeInfo.top) {
       const bottomY = item.y() + item.height() - 1;
       const heightCells = bottomY - y + 1;
@@ -279,7 +287,16 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private resizeCalculate(mousePos: IPosition, scroll: IPosition, resizeInfo: ResizeInfo, initItemRect: DOMRect): {newWidth: number, newHeight: number, newDeltaX: number, newDeltaY: number} {
+  /**
+   * Calculates the new width and height of the placeholder item
+   * @param mousePos The position of the mouse pointer on the screen
+   * @param scroll The scroll offset of the scrollable element
+   * @param resizeInfo The resize info, which sides are being resized
+   * @param item The item component being resized
+   * @param initItemRect The initial bounding rect of the item being resized
+   * @param gridRect The bounding rect of the grid
+   */
+  private resizeCalculate(mousePos: IPosition, scroll: IPosition, resizeInfo: ResizeInfo, item: ItemComponent, initItemRect: DOMRect, gridRect: GridRectData): {newWidth: number, newHeight: number, newDeltaX: number, newDeltaY: number} {
     let newWidth = this.gridService.getItem().width;
     let newHeight = this.gridService.getItem().height;
     let newDeltaX = this.gridService.getItem().x;
@@ -304,6 +321,12 @@ export class GridComponent implements AfterViewInit, OnDestroy {
         newDeltaY = Math.min(mousePos.y + scroll.y, initItemRect.bottom + scroll.y);
         newHeight = initItemRect.bottom - mousePos.y;
       } else {
+        // Calculate the newDeltaY because we have dynamic row heights, and they can change
+        const rowHeights: number[] = this.getRowHeights();
+        const heightOffset = rowHeights.slice(0, item.y() - 1).reduce((acc, height) => acc + height, 0);
+        const gapOffset = (item.y() - 1) * gridRect.rowGap;
+        newDeltaY = gridRect.top + heightOffset + gapOffset + scroll.y;
+
         newHeight = mousePos.y - initItemRect.top;
       }
     }
@@ -337,14 +360,16 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  /*
+  /**
     * Calculates the cell width and height, and the delta x and y of the mouse relative to the grid
    */
   private calcGridRectData(): GridRectData {
-    const gridRect = this.grid.nativeElement.getBoundingClientRect();
-    const computedStyle = window.getComputedStyle(this.grid.nativeElement);
-    const colGap = parseInt(computedStyle.columnGap, 10);
-    const rowGap = parseInt(computedStyle.rowGap, 10);
+    const gridElement = this.grid.nativeElement;
+    const gridRect = gridElement.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(gridElement);
+
+    const colGap = parseInt(computedStyle.columnGap, 10) || 0;
+    const rowGap = parseInt(computedStyle.rowGap, 10) || 0;
 
     const gridWidth = gridRect.width;
     const gridHeight = gridRect.height;
@@ -418,8 +443,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
    * @private
    */
   private calcGridItemPositionY(position: number, gap: number): number {
-    const pixelHeights = window.getComputedStyle(this.grid.nativeElement).gridTemplateRows;
-    const heights = pixelHeights.split(' ').map((height) => parseInt(height, 10));
+    const heights = this.getRowHeights();
 
     let from = 0;
     let to = 0;
@@ -433,6 +457,11 @@ export class GridComponent implements AfterViewInit, OnDestroy {
     }
 
     return heights.length;
+  }
+
+  private getRowHeights(): number[] {
+    const pixelHeights = window.getComputedStyle(this.grid.nativeElement).gridTemplateRows;
+    return pixelHeights.split(' ').map((height) => parseInt(height, 10));
   }
 
   /**
