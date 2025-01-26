@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/skutam/angular-drag-drop-layout/compare/v1.2.1...v1.3.0) (2025-01-26)
+
+
+### Bug Fixes
+
+* Automatic adding of item to the grid ([#46](https://github.com/skutam/angular-drag-drop-layout/issues/46)) ([12ab63b](https://github.com/skutam/angular-drag-drop-layout/commit/12ab63bbde5fa4541bec76f45075d649c06b90d1))
+* Type errors ([#46](https://github.com/skutam/angular-drag-drop-layout/issues/46)) ([699384d](https://github.com/skutam/angular-drag-drop-layout/commit/699384dfa61607829d3246bf027337feddbbcd2d))
+
 ### [1.2.1](https://github.com/skutam/angular-drag-drop-layout/compare/v1.2.0...v1.2.1) (2024-12-11)
 
 
