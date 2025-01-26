@@ -1,6 +1,7 @@
 {
   "name": "angular-grid-layout",
   "version": "1.2.1",
+  "types": "dist/index.d.ts",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
