@@ -137,7 +137,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
         const oldItems = this.items().filter((i) => i.id !== 'dragItem');
         const {x, y} = this.calculateItemPosition(gridPointerEvent, dragItem.width, dragItem.height);
         const item = new Item(null, x, y, dragItem.width, dragItem.height, dragItem.data);
-        this.items.set([...oldItems, item]);
+        this.items.set(oldItems);
         this.itemDropped.emit({
           event: gridPointerEvent.event,
           item,

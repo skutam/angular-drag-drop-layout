@@ -92,8 +92,12 @@ export class AppComponent {
     this.itemsBottom = this.itemsBottom.filter((item) => item.id !== id);
   }
 
-  public itemDropped(event: GridItemDroppedEvent): void {
-    console.log(event);
+  public itemDroppedTop(event: GridItemDroppedEvent): void {
+    this.itemsTop.push(event.item);
+  }
+
+  public itemDroppedBottom(event: GridItemDroppedEvent): void {
+    this.itemsBottom.push(event.item);
   }
 
   protected toggleResizeType(resizeType: ResizeType): void {
