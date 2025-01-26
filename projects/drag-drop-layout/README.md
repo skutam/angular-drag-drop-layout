@@ -92,7 +92,7 @@ export class AppComponent {
   public colGap: number = 20;
   public rowGap: number = 20;
 
-  public items: Item[] = [
+  public items: Item<string>[] = [
     new Item(null, 6, 2, 2, 2, 'Item 0 | TOP'),
     new Item(null, 2, 2, 2, 1, 'Item 1 | TOP'),
     new Item(null, 11, 3, 1, 2, 'Item 2 | TOP'),

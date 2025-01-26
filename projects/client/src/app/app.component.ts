@@ -1,5 +1,5 @@
 import {Component} from '@angular/core';
-import {DragDropLayoutModule, Item, itemTrackBy, ResizeType} from '@skutam/drag-drop-layout';
+import {DragDropLayoutModule, IItem, Item, itemTrackBy, ResizeType} from '@skutam/drag-drop-layout';
 import {NgForOf, NgIf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {GridItemDroppedEvent} from "../../../drag-drop-layout/src/lib/grid/grid.definitions";
@@ -58,13 +58,13 @@ export class AppComponent {
   public isDraggable: boolean = true;
   public isDisabled: boolean = false;
 
-  public itemsTop: Item[] = [
+  public itemsTop: IItem<string>[] = [
     new Item(null, 6, 2, 2, 2, 'Item 0 | TOP'),
     new Item(null, 2, 2, 2, 1, 'Item 1 | TOP'),
     new Item(null, 11, 3, 1, 2, 'Item 2 | TOP'),
   ];
 
-  public itemsBottom: Item[] = [
+  public itemsBottom: IItem<string>[] = [
     new Item(null, 6, 2, 2, 2, 'Item 3 | BOTTOM'),
     new Item(null, 2, 2, 2, 1, 'Item 4 | BOTTOM'),
   ];
@@ -77,9 +77,7 @@ export class AppComponent {
       this.itemsTop.push(new Item(null, 1, 1, 1, 1));
     } else {
       const lastItem = this.itemsTop[this.itemsTop.length - 1];
-      const newItem = lastItem.clone();
-      newItem.x = lastItem.x + 1;
-      newItem.y = lastItem.y + 1;
+      const newItem = new Item(null, lastItem.x + 1, lastItem.y + 1, lastItem.width, lastItem.height, lastItem.data);
       this.itemsTop.push(newItem);
     }
   }

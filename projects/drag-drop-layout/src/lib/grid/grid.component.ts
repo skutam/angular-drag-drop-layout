@@ -17,7 +17,7 @@ import {
   QueryList,
 } from '@angular/core';
 import {ItemComponent} from "../item/item.component";
-import {getResizeInfo, Item, ResizeInfo, ResizeType} from "../item/item.definitions";
+import {getResizeInfo, IItem, Item, ResizeInfo, ResizeType} from "../item/item.definitions";
 import {GridDragItemService} from "../services/grid-drag-item.service";
 import {GridEvent, GridItemDroppedEvent, GridRectData, IGridPointerEvent} from "./grid.definitions";
 import {GridService} from "../services/grid.service";
@@ -52,7 +52,7 @@ export class GridComponent implements AfterViewInit, OnDestroy {
   public rows = input<number>(3);
   public colGap= input<HeightUnit>('8px');
   public rowGap = input<HeightUnit>('8px');
-  public items = model<Item[]>([] as Item[])
+  public items = model<IItem[]>([] as Item[])
 
   public gridHeight = input<HeightProp>('auto');
   public itemMinHeight = input<HeightUnit|null>(null);

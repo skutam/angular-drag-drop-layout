@@ -1,6 +1,6 @@
 import {IPosition} from "../definitions";
 
-export function itemTrackBy(_: number, item: Item) {
+export function itemTrackBy(_: number, item: IItem) {
   return item.id;
 }
 
@@ -35,13 +35,22 @@ export interface ItemResizeEvent extends ItemDragEvent {
   resizeType: ResizeType;
 }
 
-export class Item {
+export interface IItem<DATA = any> {
+  id: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  data: DATA | undefined;
+}
+
+export class Item<DATA = any> implements IItem<DATA> {
   public id: string = '';
   public width: number = 1;
   public height: number = 1;
   public x: number = 0;
   public y: number = 0;
-  public data: any = undefined;
+  public data: DATA | undefined = undefined;
 
   /**
    * Create a new item
@@ -58,16 +67,12 @@ export class Item {
     y: number,
     width: number,
     height: number,
-    data: any = undefined) {
+    data: DATA | undefined = undefined) {
     this.id = id == undefined ? crypto.randomUUID().toString() : id;
     this.width = width;
     this.height = height;
     this.x = x;
     this.y = y;
     this.data = data;
-  }
-
-  public clone(): Item {
-    return new Item(null, this.x, this.y, this.width, this.height, this.data);
   }
 }
