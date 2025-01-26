@@ -102,7 +102,7 @@ export class AppComponent {
   public dragItems: string[] = ['Item 1', 'Item 2', 'Item 3'];
 
   public itemDropped(event: GridItemDroppedEvent): void {
-    console.log(event);
+    this.items = event.item;
   }
 
   protected readonly itemTrackBy = itemTrackBy;

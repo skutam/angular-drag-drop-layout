@@ -69,7 +69,7 @@
           [rowGap]="rowGap"
           [gridHeight]="gridHeight"
           [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
-          (itemDropped)="itemDropped($event)"
+          (itemDropped)="itemDroppedTop($event)"
           [scrollableElement]="document"
           [(items)]="itemsTop">
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"
@@ -100,6 +100,8 @@
           [rows]="rows"
           [colGap]="colGap"
           [rowGap]="rowGap"
+          [scrollableElement]="document"
+          (itemDropped)="itemDroppedBottom($event)"
           [(items)]="itemsBottom">
   <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
