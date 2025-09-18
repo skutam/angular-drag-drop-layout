@@ -14,6 +14,7 @@ export class Placeholder {
     this.placeholder.style.pointerEvents = 'none';
     this.placeholder.style.zIndex = '1000';
     this.placeholder.style.opacity = '0.0';
+    this.placeholder.style.display = 'none';
     this._document.body.appendChild(this.placeholder);
   }
 
@@ -23,6 +24,7 @@ export class Placeholder {
     this.placeholder.style.left = `${x}px`;
     this.placeholder.style.top = `${y}px`;
     this.placeholder.style.opacity = '0.60';
+    this.placeholder.style.display = 'block';
 
     this.item.width = width;
     this.item.height = height;
