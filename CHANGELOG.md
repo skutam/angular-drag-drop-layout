@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.1](https://github.com/skutam/angular-drag-drop-layout/compare/v1.3.0...v1.3.1) (2025-09-18)
+
+
+### Bug Fixes
+
+* Placeholder 2x2px size in default state ([#50](https://github.com/skutam/angular-drag-drop-layout/issues/50)) ([1b3069e](https://github.com/skutam/angular-drag-drop-layout/commit/1b3069e9d993793d758c20c4b10b6e62d7a4ac27))
+
 ## [1.3.0](https://github.com/skutam/angular-drag-drop-layout/compare/v1.2.1...v1.3.0) (2025-01-26)
 
 
