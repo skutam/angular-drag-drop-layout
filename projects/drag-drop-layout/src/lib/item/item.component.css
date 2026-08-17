@@ -3,9 +3,9 @@
   --ddl-item-y: 1;
   --ddl-item-width: 1;
   --ddl-item-height: 1;
-
   display: block;
   position: relative;
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
@@ -17,146 +17,38 @@
   position: absolute;
   width: 20px;
   height: 20px;
-  cursor: se-resize;
   color: inherit;
-
-  &.top-left {
-    top: 0;
-    left: 0;
-    cursor: nw-resize;
-
-    &:after {
-      content: "";
-      top: 3px;
-      left: 3px;
-      width: 10px;
-      height: 10px;
-      position: absolute;
-      border-left: 3px solid white;
-      border-top: 3px solid white;
-    }
-  }
-
-  &.top {
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    cursor: n-resize;
-
-    &:after {
-      content: "";
-      top: 3px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 10px;
-      height: 10px;
-      position: absolute;
-      border-top: 3px solid white;
-    }
-  }
-
-  &.top-right {
-    top: 0;
-    right: 0;
-    cursor: ne-resize;
-
-    &:after {
-      content: "";
-      top: 3px;
-      right: 3px;
-      width: 10px;
-      height: 10px;
-      position: absolute;
-      border-right: 3px solid white;
-      border-top: 3px solid white;
-    }
-  }
-
-  &.right {
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: e-resize;
-
-    &:after {
-      content: "";
-      top: 50%;
-      right: 3px;
-      transform: translateY(-50%);
-      width: 10px;
-      height: 10px;
-      position: absolute;
-      border-right: 3px solid white;
-    }
-  }
-
-  &.bottom-right {
-    bottom: 0;
-    right: 0;
-    cursor: se-resize;
-
-    &:after {
-      content: "";
-      bottom: 3px;
-      right: 3px;
-      width: 10px;
-      height: 10px;
-      position: absolute;
-      border-right: 3px solid white;
-      border-bottom: 3px solid white;
-    }
-  }
-
-  &.bottom {
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    cursor: s-resize;
-
-    &:after {
-      content: "";
-      bottom: 3px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 10px;
-      height: 10px;
-      position: absolute;
-      border-bottom: 3px solid white;
-    }
-  }
-
-  &.bottom-left {
-    bottom: 0;
-    left: 0;
-    cursor: sw-resize;
-
-    &:after {
-      content: "";
-      bottom: 3px;
-      left: 3px;
-      width: 10px;
-      height: 10px;
-      position: absolute;
-      border-left: 3px solid white;
-      border-bottom: 3px solid white;
-    }
-  }
-
-  &.left {
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: w-resize;
-
-    &:after {
-      content: "";
-      top: 50%;
-      left: 3px;
-      transform: translateY(-50%);
-      width: 10px;
-      height: 10px;
-      position: absolute;
-      border-left: 3px solid white;
-    }
-  }
 }
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+}
+
+.top-left { top: 0; left: 0; cursor: nw-resize; }
+.top { top: 0; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+.top-right { top: 0; right: 0; cursor: ne-resize; }
+.right { right: 0; top: 50%; transform: translateY(-50%); cursor: e-resize; }
+.bottom-right { right: 0; bottom: 0; cursor: se-resize; }
+.bottom { bottom: 0; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+.bottom-left { bottom: 0; left: 0; cursor: sw-resize; }
+.left { left: 0; top: 50%; transform: translateY(-50%); cursor: w-resize; }
+
+.top-left::after,
+.bottom-left::after { left: 3px; border-left: 3px solid white; }
+.top-right::after,
+.bottom-right::after { right: 3px; border-right: 3px solid white; }
+.top-left::after,
+.top-right::after { top: 3px; border-top: 3px solid white; }
+.bottom-left::after,
+.bottom-right::after { bottom: 3px; border-bottom: 3px solid white; }
+.top::after,
+.bottom::after { left: 50%; transform: translateX(-50%); }
+.top::after { top: 3px; border-top: 3px solid white; }
+.bottom::after { bottom: 3px; border-bottom: 3px solid white; }
+.left::after,
+.right::after { top: 50%; transform: translateY(-50%); }
+.left::after { left: 3px; border-left: 3px solid white; }
+.right::after { right: 3px; border-right: 3px solid white; }

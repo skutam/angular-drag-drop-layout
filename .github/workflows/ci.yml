@@ -1,0 +1,25 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - name: Verify synchronized documentation
+        run: cmp README.md projects/drag-drop-layout/README.md
+      - name: Inspect publishable package
+        run: npm pack ./dist/drag-drop-layout --dry-run
