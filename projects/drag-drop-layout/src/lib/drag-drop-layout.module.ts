@@ -4,8 +4,6 @@ import {ItemComponent} from "./item/item.component";
 import {DragHandleDirective} from "./directives/drag-handle.directive";
 import {DragItemDirective} from "./directives/drag-item.directive";
 import {DragItemsDirective} from "./directives/drag-items.directive";
-import {GridService} from "./services/grid.service";
-import {GridDragItemService} from "./services/grid-drag-item.service";
 import {CommonModule} from "@angular/common";
 
 
@@ -26,10 +24,6 @@ import {CommonModule} from "@angular/common";
     DragHandleDirective,
     DragItemDirective,
     DragItemsDirective,
-  ],
-  providers: [
-    GridService,
-    GridDragItemService,
   ],
 })
 export class DragDropLayoutModule { }

@@ -1,7 +1,6 @@
 import {
-  AfterViewInit,
+  AfterContentInit,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   ContentChildren,
   DestroyRef,
@@ -9,22 +8,31 @@ import {
   ElementRef,
   Inject,
   input,
-  InputSignal,
   model,
   OnDestroy,
   output,
   OutputRefSubscription,
   QueryList,
+  signal,
 } from '@angular/core';
-import {ItemComponent} from "../item/item.component";
-import {getResizeInfo, IItem, Item, ResizeInfo, ResizeType} from "../item/item.definitions";
-import {GridDragItemService} from "../services/grid-drag-item.service";
-import {GridEvent, GridItemDroppedEvent, GridRectData, IGridPointerEvent} from "./grid.definitions";
-import {GridService} from "../services/grid.service";
-import {outputToObservable, takeUntilDestroyed} from "@angular/core/rxjs-interop";
-import {filter, take, takeUntil} from "rxjs";
-import {clamp} from "../util";
-import {HeightProp, HeightUnit, IPosition} from "../definitions";
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {HeightProp, HeightUnit, IPosition} from '../definitions';
+import {GridGeometry, GridGeometrySnapshot} from '../geometry/grid-geometry';
+import {GridInteractionAdapter, InteractionPreview, InteractionSession} from '../interaction/interaction.definitions';
+import {GridItem, getResizeInfo} from '../item/item.definitions';
+import {ItemComponent} from '../item/item.component';
+import {LayoutEngine, validPriority} from '../layout/layout-engine';
+import {
+  DEFAULT_MOVE_PRIORITY,
+  LayoutSnapshot,
+  MoveDirection,
+  PlacementCommittedEvent,
+  PlacementRejectedEvent,
+  PlacementSuccess,
+} from '../layout/layout.definitions';
+import {GridRegistry} from '../services/grid-drag-item.service';
+import {GridService} from '../services/grid.service';
+import {getScrollOffset} from '../util';
 
 @Component({
   selector: 'ddl-grid',
@@ -34,437 +42,360 @@ import {HeightProp, HeightUnit, IPosition} from "../definitions";
   host: {
     '[style.display]': '"grid"',
     '[style.gridTemplateRows]': 'gridTemplateRows',
-  }
+    '[style.minHeight.px]': 'interactionMinHeight()',
+  },
 })
-export class GridComponent implements AfterViewInit, OnDestroy {
-  public id: string = `${crypto.randomUUID()}`;
-
+export class GridComponent implements AfterContentInit, OnDestroy, GridInteractionAdapter {
   @ContentChildren(ItemComponent, {descendants: true}) private itemComponents!: QueryList<ItemComponent>;
 
-  get gridTemplateRows(): string {
-    return this.itemMinHeight() === null
-      ? `repeat(var(--ddl-grid-rows), 1fr)`
-      : `repeat(var(--ddl-grid-rows), minmax(var(--ddl-grid-item-min-height), auto))`;
-  }
+  public readonly gridId = input.required<string>();
+  public readonly connectedTo = input<readonly string[]>([]);
+  public readonly columns = input(12);
+  public readonly rows = model(3);
+  public readonly colGap = input<HeightUnit>('8px');
+  public readonly rowGap = input<HeightUnit>('8px');
+  public readonly items = model<readonly GridItem[]>([]);
+  public readonly gridHeight = input<HeightProp>('auto');
+  public readonly itemMinHeight = input<HeightUnit | null>(null);
+  public readonly scrollableElement = input<HTMLElement | Document | null>(null);
+  public readonly movePriority = input<readonly MoveDirection[]>(DEFAULT_MOVE_PRIORITY);
+  public readonly allowRowGrowth = input(true);
 
-  // Inputs
-  public columns = input<number>(12);
-  public rows = input<number>(3);
-  public colGap= input<HeightUnit>('8px');
-  public rowGap = input<HeightUnit>('8px');
-  public items = model<IItem[]>([] as Item[])
+  public readonly placementCommitted = output<PlacementCommittedEvent>();
+  public readonly placementRejected = output<PlacementRejectedEvent>();
 
-  public gridHeight = input<HeightProp>('auto');
-  public itemMinHeight = input<HeightUnit|null>(null);
-  public scrollableElement = input<HTMLElement | Document | null>(null);
+  public readonly renderedRows = signal(3);
+  public readonly interactionMinHeight = signal<number | null>(null);
 
-  // Outputs
-  public dragEnter = output<GridEvent>();
-  public dragLeave = output<GridEvent>();
-  public itemDropped = output<GridItemDroppedEvent>();
+  private readonly engine = new LayoutEngine();
+  private readonly geometry = new GridGeometry();
+  private readonly subscriptions: OutputRefSubscription[] = [];
+  private registeredId: string | null = null;
+  private contentReady = false;
+  private previewResult: PlacementSuccess | null = null;
+  private lastValidItems: readonly GridItem[] = [];
+  private lastValidRows = 3;
+  private hasAcceptedLayout = false;
+  private emittedInvalidInitialState = false;
 
-  private itemComponentSubscriptions: OutputRefSubscription[] = [];
-
-  /**
-   * Determines if the user is dragging an item inside this grid
-   */
-  private _dragging = false;
-
-  constructor(
-    @Inject(ElementRef) public grid: ElementRef<HTMLElement>,
-    private gridDragItemService: GridDragItemService,
-    private gridService: GridService,
-    private destroyRef: DestroyRef,
-    private cdRef: ChangeDetectorRef,
+  public constructor(
+    @Inject(ElementRef) public readonly grid: ElementRef<HTMLElement>,
+    private readonly registry: GridRegistry,
+    private readonly gridService: GridService,
+    private readonly destroyRef: DestroyRef,
   ) {
-    this.registerPropertyEffect('--ddl-grid-columns', this.columns);
-    this.registerPropertyEffect('--ddl-grid-rows', this.rows);
-    this.registerPropertyEffect('--ddl-grid-col-gap', this.colGap);
-    this.registerPropertyEffect('--ddl-grid-row-gap', this.rowGap);
-    this.registerPropertyEffect('--ddl-grid-prop-height', this.gridHeight);
-    this.registerPropertyEffect('--ddl-grid-item-min-height', this.itemMinHeight);
+    this.bindCssProperty('--ddl-grid-columns', this.columns);
+    this.bindCssProperty('--ddl-grid-rows', this.renderedRows);
+    this.bindCssProperty('--ddl-grid-col-gap', this.colGap);
+    this.bindCssProperty('--ddl-grid-row-gap', this.rowGap);
+    this.bindCssProperty('--ddl-grid-prop-height', this.gridHeight);
+    this.bindCssProperty('--ddl-grid-item-min-height', this.itemMinHeight);
 
     effect(() => {
-      this.items();
-      this.cdRef.detectChanges();
+      const id = this.gridId();
+      if (this.registeredId === id) return;
+      if (this.registeredId) this.registry.unregister(this.registeredId);
+      this.registry.register(this);
+      this.registeredId = id;
     });
 
-    this.gridDragItemService.registerGrid(this);
-
-    outputToObservable(this.dragEnter).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe((gridEvent) => {
-      this._dragging = true;
-      const item = gridEvent.item;
-      const {cellWidth, cellHeight, colGap, rowGap} = this.calcGridRectData();
-      const width = item.width * cellWidth + (item.width - 1) * colGap;
-      const height = item.height * cellHeight + (item.height - 1) * rowGap;
-      this.gridService.resizePlaceholder(width, height);
-      const {x, y} = this.calculateItemPosition(gridEvent, item.width, item.height);
-
-      const newItem = new Item(item.id, x, y, item.width, item.height, item.data);
-
-      // Update items when we are dragging new item into the grid
-      this.items.update(items => items.find(i => i.id === item.id) ? items : [...items, newItem]);
-    });
-
-    outputToObservable(this.dragLeave).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({dragResizeData, item}) => {
-      this._dragging = false;
-      if (dragResizeData.dragItemElement) {
-        const {width, height} = dragResizeData.dragItemElement.getBoundingClientRect();
-        this.gridService.resizePlaceholder(width, height);
-      }
-
-      // Update items by removing the currently dragged item from them
-      this.items.update(items => items.filter(i => i.id !== item.id));
-    });
-
-    this.gridService.pointerMove$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      filter(() => this._dragging),
-    ).subscribe((gridPointerEvent) => this.dragMove(gridPointerEvent));
-
-    this.gridService.pointerEnd$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      filter(() => this._dragging),
-    ).subscribe((gridPointerEvent) => {
-      const dragItem = this.items().find((i) => i.id === 'dragItem');
-
-      // Dragging new ddl-item into the grid
-      if (dragItem) {
-        const oldItems = this.items().filter((i) => i.id !== 'dragItem');
-        const {x, y} = this.calculateItemPosition(gridPointerEvent, dragItem.width, dragItem.height);
-        const item = new Item(null, x, y, dragItem.width, dragItem.height, dragItem.data);
-        this.items.set(oldItems);
-        this.itemDropped.emit({
-          event: gridPointerEvent.event,
-          item,
-        });
-      } else {
-        // Emit itemDropped event when dragging from one grid to another
-        if (gridPointerEvent.dragResizeData.fromGrid !== gridPointerEvent.dragResizeData.currentGrid && gridPointerEvent.dragResizeData.currentGrid === this) {
-          this.itemDropped.emit({
-            event: gridPointerEvent.event,
-            item: gridPointerEvent.dragResizeData.item,
-          });
-        }
-        this.items.set(this.itemComponents.map(c => c.getItem()));
-      }
-      this._dragging = false;
-    });
+    effect(() => this.acceptExternalLayout(
+      this.items(),
+      this.rows(),
+      this.columns(),
+      this.movePriority(),
+      this.allowRowGrowth(),
+    ), {allowSignalWrites: true});
   }
 
-  public ngAfterViewInit(): void {
-    this.itemComponents.changes.pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe(() => this.updateItemComponents());
-    this.updateItemComponents();
+  public get interactionGridId(): string {
+    return this.gridId();
+  }
+
+  public get interactionConnectedTo(): readonly string[] {
+    return this.connectedTo();
+  }
+
+  public get gridTemplateRows(): string {
+    return this.itemMinHeight() === null
+      ? `repeat(${this.renderedRows()}, 1fr)`
+      : `repeat(${this.renderedRows()}, minmax(var(--ddl-grid-item-min-height), auto))`;
+  }
+
+  public ngAfterContentInit(): void {
+    this.contentReady = true;
+    this.itemComponents.changes.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.connectItemComponents();
+      this.render(this.previewResult?.items ?? this.lastValidItems);
+    });
+    this.connectItemComponents();
+    this.render(this.lastValidItems);
   }
 
   public ngOnDestroy(): void {
-    this.itemComponentSubscriptions.forEach((subscription) => subscription.unsubscribe());
-    this.itemComponentSubscriptions = [];
-    this.gridDragItemService.unregisterGrid(this);
+    this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+    if (this.registeredId) this.registry.unregister(this.registeredId);
   }
 
-  private registerPropertyEffect(property: string, signalValue: InputSignal<any>): void {
-    effect(() => {
-      this.grid.nativeElement.style.setProperty(property, signalValue()?.toString());
+  public containsPointer(pointer: IPosition): boolean {
+    const rect = this.grid.nativeElement.getBoundingClientRect();
+    return pointer.x >= rect.left && pointer.x <= rect.right && pointer.y >= rect.top && pointer.y <= rect.bottom;
+  }
+
+  public snapshot(): LayoutSnapshot {
+    return {
+      items: this.lastValidItems.map((item) => Object.freeze({...item})),
+      columns: this.columns(),
+      rows: this.lastValidRows,
+    };
+  }
+
+  public captureGeometry(scroll: IPosition): GridGeometrySnapshot {
+    return this.geometry.capture(this.grid.nativeElement, this.columns(), this.lastValidRows, scroll);
+  }
+
+  public preview(
+    session: InteractionSession,
+    snapshot: LayoutSnapshot,
+    pointer: IPosition,
+    scroll: IPosition,
+  ): InteractionPreview {
+    const geometry = session.geometries.get(this.interactionGridId)!;
+    const resizeInfo = session.resizeType ? getResizeInfo(session.resizeType) : null;
+    const proposed = resizeInfo
+      ? this.geometry.resizedItem(
+        geometry,
+        pointer,
+        scroll,
+        snapshot.columns,
+        session.item,
+        resizeInfo.top,
+        resizeInfo.left,
+        resizeInfo.bottom,
+        resizeInfo.right,
+      )
+      : this.geometry.itemAtPointer(geometry, pointer, scroll, snapshot.columns, session.item, session.itemOffset);
+    const operation = session.sourceGridId && session.sourceGridId !== this.interactionGridId
+      ? 'transfer'
+      : session.operation;
+    if (session.sourceGridId !== this.interactionGridId && snapshot.items.some((item) => item.id === proposed.id)) {
+      this.clearPreview(snapshot);
+      return {result: {ok: false, reason: 'duplicate-item-id', attemptedItem: proposed}};
+    }
+    const result = this.engine.resolvePlacement({
+      ...snapshot,
+      active: proposed,
+      operation,
+      movePriority: this.movePriority(),
+      allowRowGrowth: this.allowRowGrowth(),
+      mayRelocateActive: operation === 'insert',
     });
+
+    if (!result.ok) {
+      this.clearPreview(snapshot);
+      return {result};
+    }
+
+    const latchedRows = Math.max(this.previewResult?.rows ?? snapshot.rows, result.rows);
+    this.previewResult = {...result, rows: latchedRows};
+    this.applyRenderedRows(latchedRows);
+    if (resizeInfo?.vertical) {
+      this.applyInteractionMinHeight(this.geometry.minimumHeight(geometry, latchedRows));
+    } else {
+      this.applyInteractionMinHeight(null);
+    }
+    this.render(result.items);
+    const active = result.items.find((item) => item.id === session.item.id)!;
+    const renderedComponent = this.itemComponents?.find((component) => component.itemId() === active.id);
+    const renderedRect = renderedComponent?.element.getBoundingClientRect();
+    return {
+      result: this.previewResult,
+      rect: renderedRect && renderedRect.width > 0 && renderedRect.height > 0
+        ? {
+          left: renderedRect.left + window.scrollX,
+          top: renderedRect.top + window.scrollY,
+          width: renderedRect.width,
+          height: renderedRect.height,
+        }
+        : this.geometry.renderedRect(geometry, active, scroll),
+    };
   }
 
-  /**
-   * Updates the item components when the items change
-   */
-  private updateItemComponents(): void {
-    this.validateItems();
+  public previewSourceRemoval(itemId: string, snapshot: LayoutSnapshot): void {
+    const items = snapshot.items.filter((item) => item.id !== itemId);
+    this.previewResult = {ok: true, items, rows: snapshot.rows};
+    this.applyRenderedRows(snapshot.rows);
+    this.applyInteractionMinHeight(null);
+    this.render(items, itemId);
+  }
 
-    this.itemComponentSubscriptions.forEach((subscription) => subscription.unsubscribe());
-    this.itemComponentSubscriptions = [];
+  public clearPreview(snapshot: LayoutSnapshot = this.snapshot()): void {
+    this.previewResult = null;
+    this.applyRenderedRows(snapshot.rows);
+    this.applyInteractionMinHeight(null);
+    this.render(snapshot.items);
+  }
 
-    this.itemComponents.forEach((item, index) => {
-      const itemData = this.items()[index];
-      item.id = itemData.id;
-      item.x.set(itemData.x);
-      item.y.set(itemData.y);
-      item.width.set(itemData.width);
-      item.height.set(itemData.height);
-      item.data.set(itemData.data);
-      item.scrollableElement.set(this.scrollableElement());
+  public commitPreview(): void {
+    if (!this.previewResult) return;
+    const result = this.previewResult;
+    this.lastValidItems = result.items;
+    this.lastValidRows = result.rows;
+    this.items.set(result.items);
+    this.rows.set(result.rows);
+    this.previewResult = null;
+    this.applyRenderedRows(result.rows);
+    this.applyInteractionMinHeight(null);
+    this.render(result.items);
+  }
 
-      this.itemComponentSubscriptions.push(
-        // Register drag events
-        item.dragStart.subscribe(({event}) => {
-          const itemPosInGrid = this.calcItemPositionInGrid(event);
-          this.gridService.startDrag(this, item.getItem(), item, event,{
-            x: item.x() - itemPosInGrid.x,
-            y: item.y() - itemPosInGrid.y,
-          }, this.scrollableElement());
+  public commitSourceRemoval(itemId: string): void {
+    const items = this.lastValidItems.filter((item) => item.id !== itemId);
+    this.lastValidItems = items;
+    this.items.set(items);
+    this.previewResult = null;
+    this.applyRenderedRows(this.lastValidRows);
+    this.applyInteractionMinHeight(null);
+    this.render(items);
+  }
+
+  public notifyPlacementCommitted(event: PlacementCommittedEvent): void {
+    this.placementCommitted.emit(event);
+  }
+
+  public notifyPlacementRejected(event: PlacementRejectedEvent): void {
+    this.placementRejected.emit(event);
+  }
+
+  private acceptExternalLayout(
+    items: readonly GridItem[],
+    rows: number,
+    columns: number,
+    priority: readonly MoveDirection[],
+    allowRowGrowth: boolean,
+  ): void {
+    if (!Number.isInteger(columns) || columns < 1 || !Number.isInteger(rows) || rows < 1) {
+      throw new Error('Grid columns and rows must be positive integers.');
+    }
+    if (!validPriority(priority)) {
+      throw new Error('movePriority must be a non-empty, duplicate-free list of top, left, right, or bottom.');
+    }
+    if (sameLayout(items, this.lastValidItems) && rows === this.lastValidRows) {
+      this.hasAcceptedLayout = true;
+      return;
+    }
+    const permitGrowth = this.hasAcceptedLayout && rows < this.lastValidRows ? false : allowRowGrowth;
+    const normalized = this.engine.normalize({items, columns, rows}, priority, permitGrowth);
+    if (!normalized.ok) {
+      const fallbackItems = this.lastValidItems;
+      const fallbackRows = this.hasAcceptedLayout ? this.lastValidRows : (Number.isInteger(rows) && rows > 0 ? rows : 1);
+      this.rows.set(fallbackRows);
+      this.items.set(fallbackItems);
+      if (this.contentReady || !this.emittedInvalidInitialState) {
+        this.emittedInvalidInitialState = true;
+        this.placementRejected.emit({
+          operation: 'normalize',
+          reason: normalized.reason,
+          item: normalized.attemptedItem,
+          sourceGridId: this.registeredId,
+          targetGridId: this.registeredId,
+        });
+      }
+      return;
+    }
+
+    this.lastValidItems = normalized.items;
+    this.lastValidRows = normalized.rows;
+    this.hasAcceptedLayout = true;
+    this.applyRenderedRows(normalized.rows);
+    if (!sameLayout(items, normalized.items) || rows !== normalized.rows) {
+      this.rows.set(normalized.rows);
+      this.items.set(normalized.items);
+    }
+    if (this.contentReady) this.render(normalized.items);
+  }
+
+  private connectItemComponents(): void {
+    this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.subscriptions.length = 0;
+    const componentIds = new Set<string>();
+    this.itemComponents.forEach((component) => {
+      const id = component.itemId();
+      if (componentIds.has(id)) throw new Error(`Duplicate ddl-item itemId: ${id}`);
+      componentIds.add(id);
+      component.scrollableElement.set(this.scrollableElement());
+      this.subscriptions.push(
+        component.dragStart.subscribe(({event}) => {
+          const pointer = event as PointerEvent;
+          const scroll = getScrollOffset(this.scrollableElement());
+          const geometry = this.captureGeometry(scroll);
+          const pointed = this.geometry.itemAtPointer(
+            geometry,
+            pointer,
+            scroll,
+            this.columns(),
+            component.getItem(),
+            {x: 0, y: 0},
+          );
+          this.gridService.startGridDrag(
+            this,
+            component.getItem(),
+            component.element,
+            pointer,
+            {x: component.x() - pointed.x, y: component.y() - pointed.y},
+            this.scrollableElement(),
+          );
         }),
-        // Register resize events
-        item.resizeStart.subscribe(({resizeType, event}) => this.resizeStart(item, event, resizeType)),
+        component.resizeStart.subscribe(({event, resizeType}) => this.gridService.startResize(
+          this,
+          component.getItem(),
+          component.element,
+          event as PointerEvent,
+          resizeType,
+          this.scrollableElement(),
+        )),
       );
     });
   }
 
-  /**
-   * Moves the item while dragging
-   */
-  private dragMove(gridPointerEvent: IGridPointerEvent): void {
-    const item = this.itemComponents.find((item) => item.id === gridPointerEvent.dragResizeData.item.id);
-    if (!item) {
-      return;
-    }
-
-    const {x, y} = this.calculateItemPosition(gridPointerEvent, item.width(), item.height());
-    item.x.set(x);
-    item.y.set(y);
-  }
-
-  private resizeStart(item: ItemComponent, mousePos: IPosition, resizeType: ResizeType): void {
-    this.gridService.startResize(item.getItem(), item, mousePos, this.scrollableElement());
-
-    const initResizeItem = item.getItem();
-    const resizeInfo = getResizeInfo(resizeType);
-
-    this.gridService.pointerMove$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event, scroll}) => {
-      const gridRect = this.calcGridRectData();
-      this.resizeMove(event, item, resizeInfo, initResizeItem, gridRect);
-
-      // Move placeholder after rendering the item in the grid
-      setTimeout(() => {
-        const initItemRect = item.element.getBoundingClientRect();
-        let {newWidth, newHeight, newDeltaX, newDeltaY} = this.resizeCalculate(event, scroll, resizeInfo, item, initItemRect, gridRect);
-        this.gridService.resizePlaceholder(newWidth, newHeight);
-        this.gridService.movePlaceholder(newDeltaX, newDeltaY);
-      }, 0);
+  private render(items: readonly GridItem[], hiddenItemId?: string): void {
+    if (!this.contentReady) return;
+    const byId = new Map(items.map((item) => [item.id, item]));
+    this.itemComponents.forEach((component) => {
+      const item = byId.get(component.itemId()) ?? this.lastValidItems.find((candidate) => candidate.id === component.itemId());
+      if (item) component.render(item, component.itemId() === hiddenItemId);
     });
-
-    this.gridService.pointerEnd$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      take(1),
-    ).subscribe(() => this.items.set(this.itemComponents.map((item) => item.getItem())));
   }
 
-  // TODO: When resizing outside the window, the scroll position is not taken into account
-  /**
-   * Moves the item while resizing
-   * @param mousePos The position of the mouse pointer on the screen
-   * @param item The item component being resized
-   * @param resizeInfo The resize info, which sides are being resized
-   * @param initResizeItem The initial item being resized
-   * @param gridRect The bounding rect of the grid
-   * @private
-   */
-  private resizeMove(mousePos: IPosition, item: ItemComponent, resizeInfo: ResizeInfo, initResizeItem: Item, gridRect: GridRectData): void {
-    const xOnGrid = clamp(1, gridRect.width, mousePos.x - gridRect.left);
-    const x = this.calcGridItemPosition(xOnGrid, gridRect.cellWidth, gridRect.colGap, this.columns());
-    if (resizeInfo.left) {
-      const rightX = item.x() + item.width() - 1;
-      const widthCols = rightX - x + 1;
-      item.width.set(Math.max(1, widthCols));
-      item.x.set(Math.max(1, (initResizeItem.x + initResizeItem.width) - item.width()));
-    } else if (resizeInfo.horizontal) {
-      const widthCols = x - item.x() + 1;
-      item.width.set(Math.max(1, Math.min(widthCols, this.columns() - item.x() + 1)));
-    }
-
-    const yOnGrid = clamp(1, gridRect.height, mousePos.y - gridRect.top);
-    const y = this.calcGridItemPositionY(yOnGrid, gridRect.rowGap);
-    if (resizeInfo.top) {
-      const bottomY = item.y() + item.height() - 1;
-      const heightCells = bottomY - y + 1;
-      item.height.set(Math.max(1, heightCells));
-      item.y.set(Math.max(1, (initResizeItem.y + initResizeItem.height) - item.height()));
-    } else if (resizeInfo.vertical) {
-      const heightCells = y - item.y() + 1;
-      item.height.set(Math.max(1, Math.min(heightCells, this.rows() - item.y() + 1)));
-    }
-  }
-
-  /**
-   * Calculates the new width and height of the placeholder item
-   * @param mousePos The position of the mouse pointer on the screen
-   * @param scroll The scroll offset of the scrollable element
-   * @param resizeInfo The resize info, which sides are being resized
-   * @param item The item component being resized
-   * @param initItemRect The initial bounding rect of the item being resized
-   * @param gridRect The bounding rect of the grid
-   */
-  private resizeCalculate(mousePos: IPosition, scroll: IPosition, resizeInfo: ResizeInfo, item: ItemComponent, initItemRect: DOMRect, gridRect: GridRectData): {newWidth: number, newHeight: number, newDeltaX: number, newDeltaY: number} {
-    let newWidth = this.gridService.getItem().width;
-    let newHeight = this.gridService.getItem().height;
-    let newDeltaX = this.gridService.getItem().x;
-    let newDeltaY = this.gridService.getItem().y;
-
-    // Calculate width and move item on an x-axis
-    if (resizeInfo.horizontal) {
-      // Resize width and move item on x-axis
-      if (resizeInfo.left) {
-        newDeltaX = Math.min(mousePos.x + scroll.x, initItemRect.right + scroll.x);
-        newWidth = initItemRect.right - mousePos.x;
+  private bindCssProperty(property: string, value: {(): unknown}): void {
+    effect(() => {
+      const next = value();
+      if (next === null || next === undefined) {
+        this.grid.nativeElement.style.removeProperty(property);
       } else {
-        newWidth = mousePos.x - initItemRect.left;
+        this.grid.nativeElement.style.setProperty(property, next.toString());
       }
-      newHeight = initItemRect.height; // Set the height to the initial height, because we have dynamic row heights
-    }
-
-    // Calculate height and move item on y-axis
-    if (resizeInfo.vertical) {
-      // Resize height and move item on y-axis
-      if (resizeInfo.top) {
-        newDeltaY = Math.min(mousePos.y + scroll.y, initItemRect.bottom + scroll.y);
-        newHeight = initItemRect.bottom - mousePos.y;
-      } else {
-        // Calculate the newDeltaY because we have dynamic row heights, and they can change
-        const rowHeights: number[] = this.getRowHeights();
-        const heightOffset = rowHeights.slice(0, item.y() - 1).reduce((acc, height) => acc + height, 0);
-        const gapOffset = (item.y() - 1) * gridRect.rowGap;
-        newDeltaY = gridRect.top + heightOffset + gapOffset + scroll.y;
-
-        newHeight = mousePos.y - initItemRect.top;
-      }
-    }
-
-    // Force width and height to be at least 1 pixel
-    newWidth = Math.max(1, newWidth);
-    newHeight = Math.max(1, newHeight);
-
-    return {newWidth, newHeight, newDeltaX, newDeltaY};
-  }
-
-  public eventInsideGrid(event: PointerEvent): boolean {
-    const gridRect = this.grid.nativeElement.getBoundingClientRect();
-    return gridRect!.left <= event.clientX && event.clientX <= gridRect!.right &&
-      gridRect!.top <= event.clientY && event.clientY <= gridRect!.bottom;
-  }
-
-  private validateItems(): void {
-    // Check for duplicate item ids
-    const ids = new Set<string>();
-    this.itemComponents.forEach((item) => {
-      if (ids.has(item.id)) {
-        throw new Error(`Duplicate item id found: ${item.id}`);
-      }
-      ids.add(item.id);
     });
-
-    // Check if the item count matches the item components
-    if (this.items().length !== this.itemComponents.length) {
-      throw new Error('Item count mismatch');
-    }
   }
 
-  /**
-    * Calculates the cell width and height, and the delta x and y of the mouse relative to the grid
-   */
-  private calcGridRectData(): GridRectData {
-    const gridElement = this.grid.nativeElement;
-    const gridRect = gridElement.getBoundingClientRect();
-    const computedStyle = window.getComputedStyle(gridElement);
-
-    const colGap = parseInt(computedStyle.columnGap, 10) || 0;
-    const rowGap = parseInt(computedStyle.rowGap, 10) || 0;
-
-    const gridWidth = gridRect.width;
-    const gridHeight = gridRect.height;
-
-    const cellWidth = (gridWidth - colGap * (this.columns() - 1)) / this.columns();
-    const cellHeight = (gridHeight - rowGap * (this.rows() - 1)) / this.rows();
-
-    return {
-      top: gridRect.top,
-      left: gridRect.left,
-      width: gridWidth,
-      height: gridHeight,
-      cellWidth,
-      cellHeight,
-      colGap,
-      rowGap,
-    }
+  private applyRenderedRows(rows: number): void {
+    this.renderedRows.set(rows);
+    this.grid.nativeElement.style.setProperty('--ddl-grid-rows', rows.toString());
+    this.grid.nativeElement.style.gridTemplateRows = this.itemMinHeight() === null
+      ? `repeat(${rows}, 1fr)`
+      : `repeat(${rows}, minmax(var(--ddl-grid-item-min-height), auto))`;
   }
 
-  /**
-   * Calculates the new x and y position of the item being dragged, making sure it doesn't go out of bounds
-   * @param gridPointerEvent The grid pointer event
-   * @param width The width of the item being dragged
-   * @param height The height of the item being dragged
-   * @private
-   */
-  private calculateItemPosition(gridPointerEvent: IGridPointerEvent, width: number, height: number): {x: number, y: number} {
-    const {x, y} = this.calcItemPositionInGrid(gridPointerEvent.event);
-
-    const newX = clamp(1, this.columns() - (width - Math.abs(gridPointerEvent.dragResizeData.itemOffset.x)) + 1, x + gridPointerEvent.dragResizeData.itemOffset.x);
-    const newY = clamp(1, this.rows() - (height - Math.abs(gridPointerEvent.dragResizeData.itemOffset.y)) + 1, y + gridPointerEvent.dragResizeData.itemOffset.y);
-    return {x: newX, y: newY};
+  private applyInteractionMinHeight(height: number | null): void {
+    this.interactionMinHeight.set(height);
+    this.grid.nativeElement.style.minHeight = height === null ? '' : `${height}px`;
   }
+}
 
-  /**
-   * Calculates the x and y position of the pointer relative to the grid, 0,0 is the top left corner of the grid
-   * @param mousePos
-   * @private
-   */
-  private calcItemPositionInGrid(mousePos: IPosition): IPosition {
-    const gridRectData = this.calcGridRectData();
-
-    // Calculate the x and y position of the pointer relative to the grid, 0,0 is the top left corner of the grid
-    const xOnGrid = clamp(1, gridRectData.width, mousePos.x - gridRectData.left);
-    const yOnGrid = clamp(1, gridRectData.height, mousePos.y - gridRectData.top);
-
-    const x = this.calcGridItemPosition(xOnGrid, gridRectData.cellWidth, gridRectData.colGap, this.columns());
-    const y = this.calcGridItemPositionY(yOnGrid, gridRectData.rowGap);
-
-    return {x, y};
-  }
-
-  /**
-   * Calculates the grid item position based on the pointer position
-   * @param position The position of the pointer
-   * @param cellSize The size of the cell
-   * @param gap The gap between the cells
-   * @param max The maximum number of cells
-   * @private
-   */
-  private calcGridItemPosition(position: number, cellSize: number, gap: number, max: number): number {
-    if (position <= cellSize + gap / 2) return 1;                                     // First square
-    if (position >= (cellSize + gap) * (max - 1) - gap / 2) return max;               // Last square
-    return Math.floor((position - (cellSize + gap / 2)) / (cellSize + gap)) + 2;   // Middle square
-  }
-
-  /**
-   * Calculates the grid item position based on the pointer position
-   * @param position The position of the pointer
-   * @param gap The gap between the cells
-   * @private
-   */
-  private calcGridItemPositionY(position: number, gap: number): number {
-    const heights = this.getRowHeights();
-
-    let from = 0;
-    let to = 0;
-
-    for (let i = 0; i < heights.length; i++) {
-      const height = heights[i];
-      to += height + gap;
-      if (position >= from && position <= to) {
-        return i + 1;
-      }
-    }
-
-    return heights.length;
-  }
-
-  private getRowHeights(): number[] {
-    const pixelHeights = window.getComputedStyle(this.grid.nativeElement).gridTemplateRows;
-    return pixelHeights.split(' ').map((height) => parseInt(height, 10));
-  }
-
-  /**
-   * TODO: Figure out how to calculate move of items when dragging/resizing, so the items move out of the way
-   */
+function sameLayout(a: readonly GridItem[], b: readonly GridItem[]): boolean {
+  return a.length === b.length && a.every((item, index) => {
+    const other = b[index];
+    return !!other && item.id === other.id && item.x === other.x && item.y === other.y &&
+      item.width === other.width && item.height === other.height && item.data === other.data;
+  });
 }

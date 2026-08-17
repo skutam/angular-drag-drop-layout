@@ -1,65 +1,44 @@
-import {Item} from "./item/item.definitions";
+import {DOCUMENT} from '@angular/common';
+import {Inject, Injectable} from '@angular/core';
+import {RenderedRect} from './geometry/grid-geometry';
 
-export class Placeholder {
-  private readonly placeholder!: HTMLElement;
-  private readonly item: Item = new Item('', 0, 0, 0, 0);
+@Injectable({providedIn: 'root'})
+export class PlaceholderRenderer {
+  private readonly element: HTMLElement;
 
-  constructor(private _document: Document) {
-    this.placeholder = this._document.createElement('div');
-    this.placeholder.style.backgroundColor = '#256';
-    this.placeholder.style.position = 'absolute';
-    this.placeholder.style.border = '1px dashed #000';
-    this.placeholder.style.margin = '0';
-    this.placeholder.style.padding = '0';
-    this.placeholder.style.pointerEvents = 'none';
-    this.placeholder.style.zIndex = '1000';
-    this.placeholder.style.opacity = '0.0';
-    this.placeholder.style.display = 'none';
-    this._document.body.appendChild(this.placeholder);
+  public constructor(@Inject(DOCUMENT) document: Document) {
+    this.element = document.createElement('div');
+    Object.assign(this.element.style, {
+      backgroundColor: '#256',
+      position: 'absolute',
+      border: '1px dashed #000',
+      boxSizing: 'border-box',
+      margin: '0',
+      padding: '0',
+      pointerEvents: 'none',
+      zIndex: '1000',
+      opacity: '0',
+      display: 'none',
+    });
+    document.body.appendChild(this.element);
   }
 
-  protected createPlaceholder(width: number, height: number, x: number, y: number): void {
-    this.placeholder.style.width = `${width}px`;
-    this.placeholder.style.height = `${height}px`;
-    this.placeholder.style.left = `${x}px`;
-    this.placeholder.style.top = `${y}px`;
-    this.placeholder.style.opacity = '0.60';
-    this.placeholder.style.display = 'block';
-
-    this.item.width = width;
-    this.item.height = height;
-    this.item.x = x;
-    this.item.y = y;
+  public show(rect: RenderedRect): void {
+    this.update(rect);
+    this.element.style.opacity = '0.60';
+    this.element.style.display = 'block';
   }
 
-  public movePlaceholder(x: number, y: number): void {
-    this.placeholder.style.left = `${x}px`;
-    this.placeholder.style.top = `${y}px`;
+  public update(rect: RenderedRect): void {
+    this.element.style.left = `${rect.left}px`;
+    this.element.style.top = `${rect.top}px`;
+    this.element.style.width = `${Math.max(1, rect.width)}px`;
+    this.element.style.height = `${Math.max(1, rect.height)}px`;
   }
 
-  public resizePlaceholder(width: number, height: number): void {
-    this.placeholder.style.width = `${width}px`;
-    this.placeholder.style.height = `${height}px`;
-  }
-
-  /**
-   * Destroy the placeholder
-   * Handled by the grid service
-   */
-  protected destroyPlaceholder(): void {
-    this.placeholder.style.opacity = '0.0';
-    this.placeholder.style.display = 'none';
-    this.item.x = 0;
-    this.item.y = 0;
-    this.item.width = 0;
-    this.item.height = 0;
-
-    // Item still exists, but is not visible, make sure to reset it so it doesn't cause overflow issues
-    this.movePlaceholder(0, 0);
-    this.resizePlaceholder(0, 0);
-  }
-
-  public getItem(): Item {
-    return this.item;
+  public hide(): void {
+    this.element.style.opacity = '0';
+    this.element.style.display = 'none';
+    this.update({left: 0, top: 0, width: 0, height: 0});
   }
 }

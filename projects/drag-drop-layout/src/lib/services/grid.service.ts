@@ -1,233 +1,283 @@
+import {DOCUMENT} from '@angular/common';
 import {DestroyRef, Inject, Injectable, NgZone} from '@angular/core';
-import {Item} from "../item/item.definitions";
-import {ItemComponent} from "../item/item.component";
-import {
-  auditTime,
-  combineLatest,
-  filter,
-  fromEvent,
-  map,
-  merge,
-  Observable,
-  of,
-  startWith,
-  Subject,
-  Subscription,
-} from "rxjs";
-import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
-import {GridComponent} from "../grid/grid.component";
-import {GridDragItemService} from "./grid-drag-item.service";
-import {Placeholder} from "../placeholder";
-import {IDragResizeData, IGridPointerEvent} from "../grid/grid.definitions";
-import {DOCUMENT} from "@angular/common";
-import {IPosition} from "../definitions";
-import {getScrollOffset} from "../util";
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {auditTime, filter, fromEvent, merge, Observable, Subject, Subscription} from 'rxjs';
+import {IPosition} from '../definitions';
+import {GridInteractionAdapter, InteractionSession} from '../interaction/interaction.definitions';
+import {GridItem, ResizeType} from '../item/item.definitions';
+import {PlacementOperation} from '../layout/layout.definitions';
+import {PlaceholderRenderer} from '../placeholder';
+import {getScrollOffset} from '../util';
+import {GridRegistry} from './grid-drag-item.service';
 
+export interface PointerInteractionEvent {
+  readonly event: IPosition;
+  readonly scroll: IPosition;
+}
 
-@Injectable({
-  providedIn: 'root'
-})
-export class GridService extends Placeholder {
-  private dragResizeData: IDragResizeData | null = null;
+type ActiveInteraction = {
+  session: InteractionSession;
+  scrollElement: HTMLElement | Document | null;
+  dragOffset: IPosition;
+  initialSize: {width: number; height: number};
+  lastPointer: IPosition;
+};
 
-  public pointerMove$: Observable<IGridPointerEvent>;
-  private pointerMoveSubject: Subject<IGridPointerEvent> = new Subject<IGridPointerEvent>();
-  private pointerMoveSubscription: Subscription | null = null;
+@Injectable({providedIn: 'root'})
+export class GridService {
+  public readonly pointerMove$: Observable<PointerInteractionEvent>;
+  public readonly pointerEnd$: Observable<PointerInteractionEvent>;
 
-  public pointerEnd$: Observable<IGridPointerEvent>;
-  private pointerEndSubject: Subject<IGridPointerEvent> = new Subject<IGridPointerEvent>();
+  private readonly pointerMoveSubject = new Subject<PointerInteractionEvent>();
+  private readonly pointerEndSubject = new Subject<PointerInteractionEvent>();
+  private active: ActiveInteraction | null = null;
+  private moveSubscription: Subscription | null = null;
 
-  constructor(
-    private destroyRef: DestroyRef,
-    private ngZone: NgZone,
-    private gridDragItemService: GridDragItemService,
-    @Inject(DOCUMENT) private document: Document,
+  public constructor(
+    private readonly destroyRef: DestroyRef,
+    private readonly ngZone: NgZone,
+    private readonly registry: GridRegistry,
+    private readonly placeholder: PlaceholderRenderer,
+    @Inject(DOCUMENT) private readonly document: Document,
   ) {
-    super(document);
     this.pointerMove$ = this.pointerMoveSubject.asObservable();
     this.pointerEnd$ = this.pointerEndSubject.asObservable();
-
     this.ngZone.runOutsideAngular(() => {
-      fromEvent<PointerEvent>(this.document, 'pointerup').pipe(
+      merge(
+        fromEvent<PointerEvent>(this.document, 'pointerup'),
+        fromEvent<PointerEvent>(this.document, 'pointercancel'),
+      ).pipe(
         takeUntilDestroyed(this.destroyRef),
-        filter(() => this.dragResizeData !== null),
-      ).subscribe((event: PointerEvent) => {
-        this.destroyPlaceholder();
-        this.pointerEndSubject.next({
-          event: {
-            x: event.clientX,
-            y: event.clientY,
-          },
-          dragResizeData: this.dragResizeData!,
-          scroll: getScrollOffset(this.dragResizeData!.scrollElement),
-        });
-
-        this.dragResizeData = null;
-        this.pointerMoveSubscription?.unsubscribe();
-        this.pointerMoveSubscription = null;
-      });
+        filter((event) => this.active?.session.pointerId === event.pointerId),
+      ).subscribe((event) => this.ngZone.run(() => this.finish({x: event.clientX, y: event.clientY})));
     });
   }
 
-  /**
-   * Register the pointer move event, and emit the pointer move event when the pointer is moved. We are registering
-   * it each time a drag starts, because we need to know when the pointer is moved, and what the scrollable element is.
-   * @param scrollableElement
-   * @private
-   */
-  private registerPointerMoveEvent(scrollableElement: HTMLElement | Document | null): void {
-    this.ngZone.runOutsideAngular(() => {
-      let observable: Observable<[PointerEvent, IPosition]>;
-      if (scrollableElement === null) {
-        observable = merge(
-          combineLatest([
-            fromEvent<PointerEvent>(this.document, 'pointermove').pipe(
-              auditTime(10),
-              takeUntilDestroyed(this.destroyRef),
-              filter(() => this.dragResizeData !== null),
-            ),
-            of({x: 0, y: 0}),
-          ])
-        );
-      } else {
-        observable = merge(
-          combineLatest([
-            fromEvent<PointerEvent>(this.document, 'pointermove').pipe(
-              auditTime(10),
-              takeUntilDestroyed(this.destroyRef),
-              filter(() => this.dragResizeData !== null),
-            ),
-            fromEvent<Event>(scrollableElement, 'scroll').pipe(
-              auditTime(10),
-              map(() => getScrollOffset(scrollableElement)),
-              startWith(getScrollOffset(scrollableElement)),
-            )
-          ])
-        );
-      }
-
-      this.pointerMoveSubscription = observable.subscribe(([event, scroll]) => {
-        // Calculate movement only when dragging, resize handles it on its own
-        if (this.dragResizeData!.dragging) {
-          this.handleGridEnterLeaveEvents(event);
-
-          const newDeltaX = event.clientX + this.dragResizeData!.dragOffset.x + scroll.x;
-          const newDeltaY = event.clientY + this.dragResizeData!.dragOffset.y + scroll.y;
-          this.movePlaceholder(newDeltaX, newDeltaY);
-        }
-
-        this.pointerMoveSubject.next({
-          event,
-          dragResizeData: this.dragResizeData!,
-          scroll,
-        });
-      });
-    });
+  public startGridDrag(
+    source: GridInteractionAdapter,
+    item: GridItem,
+    element: HTMLElement,
+    event: PointerEvent,
+    itemOffset: IPosition,
+    scrollElement: HTMLElement | Document | null,
+  ): void {
+    const targets = new Set([source.interactionGridId, ...source.interactionConnectedTo]);
+    this.begin('move', source, item, element, event, itemOffset, targets, scrollElement);
   }
 
-  public startDrag(fromGrid: GridComponent | null, item: Item,
-                   itemComponent: ItemComponent, mousePos: IPosition,
-                   itemOffset: { x: number, y: number }, scrollElement: HTMLElement | Document | null): void {
-    const {width, height, x, y} = itemComponent.element.getBoundingClientRect();
-    this.createPlaceholder(width, height, x + window.scrollX, y + window.scrollY);
+  public startPaletteDrag(
+    item: GridItem,
+    element: HTMLElement,
+    event: PointerEvent,
+    targets: readonly string[],
+    scrollElement: HTMLElement | Document | null,
+  ): void {
+    this.begin('insert', null, item, element, event, {x: 0, y: 0}, new Set(targets), scrollElement);
+  }
 
-    this.dragResizeData = {
-      fromGrid,
+  public startResize(
+    source: GridInteractionAdapter,
+    item: GridItem,
+    element: HTMLElement,
+    event: PointerEvent,
+    resizeType: ResizeType,
+    scrollElement: HTMLElement | Document | null,
+  ): void {
+    const session = this.begin(
+      'resize',
+      source,
       item,
-      dragItemElement: null,
-      dragging: true,
-      currentGrid: null,
-      previousGrid: null,
-      dragOffset: {
-        x: x - mousePos.x,
-        y: y - mousePos.y,
-      },
+      element,
+      event,
+      {x: 0, y: 0},
+      new Set([source.interactionGridId]),
+      scrollElement,
+    );
+    session.resizeType = resizeType;
+  }
+
+  private begin(
+    operation: PlacementOperation,
+    source: GridInteractionAdapter | null,
+    item: GridItem,
+    element: HTMLElement,
+    event: PointerEvent,
+    itemOffset: IPosition,
+    allowedTargets: ReadonlySet<string>,
+    scrollElement: HTMLElement | Document | null,
+  ): InteractionSession & {resizeType?: ResizeType} {
+    if (this.active) {
+      this.cancelActive('outside-grid');
+    }
+    const rect = element.getBoundingClientRect();
+    const scroll = getScrollOffset(scrollElement);
+    const sourceSnapshot = source?.snapshot() ?? null;
+    const session: InteractionSession & {resizeType?: ResizeType} = {
+      pointerId: event.pointerId,
+      operation,
+      sourceGridId: source?.interactionGridId ?? null,
+      item,
       itemOffset,
-      scrollElement,
+      allowedTargets,
+      sourceSnapshot,
+      geometries: new Map(),
+      snapshots: new Map(source && sourceSnapshot ? [[source.interactionGridId, sourceSnapshot]] : []),
+      targetGridId: operation === 'resize' ? source!.interactionGridId : null,
+      lastResult: null,
     };
-
-    this.registerPointerMoveEvent(scrollElement);
+    if (source) {
+      session.geometries.set(source.interactionGridId, source.captureGeometry(scroll));
+    }
+    this.active = {
+      session,
+      scrollElement,
+      dragOffset: {x: rect.left - event.clientX, y: rect.top - event.clientY},
+      initialSize: {width: rect.width, height: rect.height},
+      lastPointer: {x: event.clientX, y: event.clientY},
+    };
+    this.placeholder.show({
+      left: rect.left + window.scrollX,
+      top: rect.top + window.scrollY,
+      width: rect.width,
+      height: rect.height,
+    });
+    this.registerMoveEvents(scrollElement);
+    return session;
   }
 
-  public startItemDrag(item: Item, element: HTMLElement, event: PointerEvent, scrollElement: HTMLElement | Document | null): void {
-    const {width, height, x, y} = element.getBoundingClientRect();
-    this.createPlaceholder(width, height, x + window.scrollX, y + window.scrollY);
-
-    this.dragResizeData = {
-      fromGrid: null,
-      item,
-      dragItemElement: element,
-      dragging: true,
-      currentGrid: null,
-      previousGrid: null,
-      dragOffset: {
-        x: x - event.clientX,
-        y: y - event.clientY,
-      },
-      itemOffset: {
-        x: 0,
-        y: 0,
-      },
-      scrollElement,
-    };
-
-    this.registerPointerMoveEvent(scrollElement);
+  private registerMoveEvents(scrollElement: HTMLElement | Document | null): void {
+    this.moveSubscription?.unsubscribe();
+    this.ngZone.runOutsideAngular(() => {
+      const pointerMoves = fromEvent<PointerEvent>(this.document, 'pointermove').pipe(
+        auditTime(8),
+        filter((event) => this.active?.session.pointerId === event.pointerId),
+      );
+      const events = scrollElement
+        ? merge(pointerMoves, fromEvent(scrollElement, 'scroll').pipe(auditTime(8)))
+        : pointerMoves;
+      this.moveSubscription = events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
+        if (!this.active) return;
+        if (event instanceof PointerEvent) {
+          this.active.lastPointer = {x: event.clientX, y: event.clientY};
+        }
+        this.move(this.active.lastPointer);
+      });
+    });
   }
 
-  public startResize(item: Item, itemComponent: ItemComponent, mousePos: IPosition, scrollElement: HTMLElement | Document | null): void {
-    const {width, height, x, y} = itemComponent.element.getBoundingClientRect();
-    this.createPlaceholder(width, height, x + window.scrollX, y + window.scrollY);
+  private move(pointer: IPosition): void {
+    if (!this.active) return;
+    const active = this.active;
+    const session = active.session;
+    const scroll = getScrollOffset(active.scrollElement);
+    this.pointerMoveSubject.next({event: pointer, scroll});
 
-    this.dragResizeData = {
-      fromGrid: null,
-      item,
-      dragItemElement: null,
-      dragging: false,
-      currentGrid: null,
-      previousGrid: null,
-      dragOffset: {
-        x: x - mousePos.x,
-        y: y - mousePos.y,
-      },
-      itemOffset: {
-        x: 0,
-        y: 0,
-      },
-      scrollElement,
-    };
-
-    this.registerPointerMoveEvent(scrollElement);
-  }
-
-  /**
-   * Handle the pointer move event, by checking if the item entered a new grid or left the current grid.
-   * If the item entered a new grid, the dragEnter event is emitted on the new grid.
-   * If the item left the current grid, the dragLeave event is emitted on the current grid.
-   */
-  private handleGridEnterLeaveEvents(event: PointerEvent): void {
-    // Check if the item being dragged is still inside the same grid
-    if (this.dragResizeData!.currentGrid !== null) {
-      if (this.dragResizeData!.currentGrid.eventInsideGrid(event)) {
-        return;
-      }
+    if (session.operation !== 'resize') {
+      this.placeholder.update({
+        left: pointer.x + active.dragOffset.x + window.scrollX,
+        top: pointer.y + active.dragOffset.y + window.scrollY,
+        width: active.initialSize.width,
+        height: active.initialSize.height,
+      });
     }
 
-    // Not inside the same grid, notify previous grid
-    this.dragResizeData!.previousGrid = this.dragResizeData!.currentGrid;
-    this.dragResizeData!.previousGrid?.dragLeave.emit({
-      event,
-      item: this.dragResizeData!.item,
-      dragResizeData: this.dragResizeData!,
-      scroll: getScrollOffset(this.dragResizeData!.scrollElement),
-    });
+    const hovered = session.operation === 'resize' ? null : this.registry.findAtPointer(pointer);
+    const target = session.operation === 'resize'
+      ? this.registry.get(session.sourceGridId!) ?? null
+      : hovered && session.allowedTargets.has(hovered.interactionGridId) ? hovered : null;
+    const previousTarget = session.targetGridId ? this.registry.get(session.targetGridId) : undefined;
 
-    // Find the new grid and notify it
-    this.dragResizeData!.currentGrid = this.gridDragItemService.getGrids().find((grid) => grid.eventInsideGrid(event)) || null;
-    this.dragResizeData!.currentGrid?.dragEnter.emit({
-      event,
-      item: this.dragResizeData!.item,
-      dragResizeData: this.dragResizeData!,
-      scroll: getScrollOffset(this.dragResizeData!.scrollElement),
+    if (previousTarget && previousTarget !== target) {
+      previousTarget.clearPreview(session.snapshots.get(previousTarget.interactionGridId));
+    }
+    session.targetGridId = target?.interactionGridId ?? null;
+
+    const source = session.sourceGridId ? this.registry.get(session.sourceGridId) : undefined;
+    if (source && target?.interactionGridId !== source.interactionGridId && session.sourceSnapshot) {
+      source.previewSourceRemoval(session.item.id, session.sourceSnapshot);
+    } else if (source && session.sourceSnapshot && target !== source) {
+      source.clearPreview(session.sourceSnapshot);
+    }
+
+    if (!target) {
+      session.lastResult = hovered
+        ? {ok: false, reason: 'not-connected', attemptedItem: session.item}
+        : null;
+      return;
+    }
+
+    if (!session.snapshots.has(target.interactionGridId)) {
+      session.snapshots.set(target.interactionGridId, target.snapshot());
+    }
+    if (!session.geometries.has(target.interactionGridId)) {
+      session.geometries.set(target.interactionGridId, target.captureGeometry(scroll));
+    }
+    const preview = target.preview(session, session.snapshots.get(target.interactionGridId)!, pointer, scroll);
+    session.lastResult = preview.result;
+    if (preview.result.ok && preview.rect) {
+      this.placeholder.update(preview.rect);
+    }
+  }
+
+  private finish(pointer: IPosition): void {
+    if (!this.active) return;
+    this.move(pointer);
+    const {session, scrollElement} = this.active;
+    const target = session.targetGridId ? this.registry.get(session.targetGridId) : undefined;
+    const source = session.sourceGridId ? this.registry.get(session.sourceGridId) : undefined;
+    const result = session.lastResult;
+
+    if (target && result?.ok) {
+      target.commitPreview();
+      if (source && source !== target) {
+        source.commitSourceRemoval(session.item.id);
+      }
+      const committedItem = result.items.find((item) => item.id === session.item.id) ?? session.item;
+      target.notifyPlacementCommitted({
+        operation: source && source !== target ? 'transfer' : session.operation,
+        item: committedItem,
+        sourceGridId: session.sourceGridId,
+        targetGridId: target.interactionGridId,
+        items: result.items,
+        rows: result.rows,
+      });
+    } else {
+      target?.clearPreview(session.targetGridId ? session.snapshots.get(session.targetGridId) : undefined);
+      source?.clearPreview(session.sourceSnapshot ?? undefined);
+      (target ?? source)?.notifyPlacementRejected({
+        operation: session.operation,
+        reason: result && !result.ok ? result.reason : 'outside-grid',
+        item: session.item,
+        sourceGridId: session.sourceGridId,
+        targetGridId: session.targetGridId,
+      });
+    }
+
+    this.pointerEndSubject.next({event: pointer, scroll: getScrollOffset(scrollElement)});
+    this.endSession();
+  }
+
+  private cancelActive(reason: 'outside-grid'): void {
+    if (!this.active) return;
+    const {session} = this.active;
+    const source = session.sourceGridId ? this.registry.get(session.sourceGridId) : undefined;
+    const target = session.targetGridId ? this.registry.get(session.targetGridId) : undefined;
+    target?.clearPreview(session.targetGridId ? session.snapshots.get(session.targetGridId) : undefined);
+    source?.clearPreview(session.sourceSnapshot ?? undefined);
+    (target ?? source)?.notifyPlacementRejected({
+      operation: session.operation,
+      reason,
+      item: session.item,
+      sourceGridId: session.sourceGridId,
+      targetGridId: session.targetGridId,
     });
+    this.endSession();
+  }
+
+  private endSession(): void {
+    this.placeholder.hide();
+    this.moveSubscription?.unsubscribe();
+    this.moveSubscription = null;
+    this.active = null;
   }
 }

@@ -1,9 +1,15 @@
 import {Component} from '@angular/core';
-import {DragDropLayoutModule, IItem, Item, itemTrackBy, ResizeType} from '@skutam/drag-drop-layout';
+import {
+  createGridItem,
+  DragDropLayoutModule,
+  GridItem,
+  HeightProp,
+  HeightUnit,
+  itemTrackBy,
+  ResizeType,
+} from '@skutam/drag-drop-layout';
 import {NgForOf, NgIf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
-import {GridItemDroppedEvent} from "../../../drag-drop-layout/src/lib/grid/grid.definitions";
-import {HeightProp, HeightUnit} from "../../../drag-drop-layout/src/lib/definitions";
 import {HeightPickerComponent} from "./height-picker/height-picker.component";
 import {HeightPropPickerComponent} from "./height-prop-picker/height-prop-picker.component";
 
@@ -22,7 +28,8 @@ export class AppComponent {
   /**
    * The number of rows in the grid.
    */
-  public rows: number = 4;
+  public rowsTop: number = 4;
+  public rowsBottom: number = 4;
   /**
    * The width of the grid in pixels.
    */
@@ -58,15 +65,15 @@ export class AppComponent {
   public isDraggable: boolean = true;
   public isDisabled: boolean = false;
 
-  public itemsTop: IItem<string>[] = [
-    new Item(null, 6, 2, 2, 2, 'Item 0 | TOP'),
-    new Item(null, 2, 2, 2, 1, 'Item 1 | TOP'),
-    new Item(null, 11, 3, 1, 2, 'Item 2 | TOP'),
+  public itemsTop: readonly GridItem<string>[] = [
+    createGridItem({x: 6, y: 2, width: 2, height: 2, data: 'Item 0 | TOP'}),
+    createGridItem({x: 2, y: 2, width: 2, height: 1, data: 'Item 1 | TOP'}),
+    createGridItem({x: 11, y: 3, width: 1, height: 2, data: 'Item 2 | TOP'}),
   ];
 
-  public itemsBottom: IItem<string>[] = [
-    new Item(null, 6, 2, 2, 2, 'Item 3 | BOTTOM'),
-    new Item(null, 2, 2, 2, 1, 'Item 4 | BOTTOM'),
+  public itemsBottom: readonly GridItem<string>[] = [
+    createGridItem({x: 6, y: 2, width: 2, height: 2, data: 'Item 3 | BOTTOM'}),
+    createGridItem({x: 2, y: 2, width: 2, height: 1, data: 'Item 4 | BOTTOM'}),
   ];
 
   public resizeTypes: ResizeType[] = ['bottom-right', 'right', 'top-left', 'left', 'bottom-left', 'top', 'bottom'];
@@ -74,11 +81,17 @@ export class AppComponent {
 
   public addItemTop(): void {
     if (this.itemsTop.length === 0) {
-      this.itemsTop.push(new Item(null, 1, 1, 1, 1));
+      this.itemsTop = [...this.itemsTop, createGridItem({x: 1, y: 1, width: 1, height: 1})];
     } else {
       const lastItem = this.itemsTop[this.itemsTop.length - 1];
-      const newItem = new Item(null, lastItem.x + 1, lastItem.y + 1, lastItem.width, lastItem.height, lastItem.data);
-      this.itemsTop.push(newItem);
+      const newItem = createGridItem({
+        x: Math.min(this.columns, lastItem.x + 1),
+        y: lastItem.y + 1,
+        width: lastItem.width,
+        height: lastItem.height,
+        data: lastItem.data,
+      });
+      this.itemsTop = [...this.itemsTop, newItem];
     }
   }
 
@@ -88,14 +101,6 @@ export class AppComponent {
 
   public removeItemBottom(id: string): void {
     this.itemsBottom = this.itemsBottom.filter((item) => item.id !== id);
-  }
-
-  public itemDroppedTop(event: GridItemDroppedEvent): void {
-    this.itemsTop.push(event.item);
-  }
-
-  public itemDroppedBottom(event: GridItemDroppedEvent): void {
-    this.itemsBottom.push(event.item);
   }
 
   protected toggleResizeType(resizeType: ResizeType): void {

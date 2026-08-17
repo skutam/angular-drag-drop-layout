@@ -1,17 +1,44 @@
-import {IPosition} from "../definitions";
+import {IPosition} from '../definitions';
 
-export function itemTrackBy(_: number, item: IItem) {
+export interface GridItem<DATA = unknown> {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly data?: DATA;
+}
+
+export type GridItemInput<DATA = unknown> = Omit<GridItem<DATA>, 'id'> & {readonly id?: string};
+
+export function createGridItem<DATA = unknown>(item: GridItemInput<DATA>): GridItem<DATA> {
+  return Object.freeze({
+    ...item,
+    id: item.id ?? crypto.randomUUID(),
+  });
+}
+
+export function itemTrackBy(_: number, item: GridItem): string {
   return item.id;
 }
 
-export interface ItemDragEvent {
-  item: Item;
+export interface ItemDragEvent<DATA = unknown> {
+  item: GridItem<DATA>;
   event: IPosition;
   scroll: IPosition;
 }
 
-export type ResizeType = 'top-left' | 'top' | 'top-right' | 'right' | 'bottom-right' | 'bottom' | 'bottom-left' | 'left';
-export type ResizeInfo = {
+export type ResizeType =
+  | 'top-left'
+  | 'top'
+  | 'top-right'
+  | 'right'
+  | 'bottom-right'
+  | 'bottom'
+  | 'bottom-left'
+  | 'left';
+
+export interface ResizeInfo {
   top: boolean;
   left: boolean;
   bottom: boolean;
@@ -31,48 +58,6 @@ export function getResizeInfo(type: ResizeType): ResizeInfo {
   };
 }
 
-export interface ItemResizeEvent extends ItemDragEvent {
+export interface ItemResizeEvent<DATA = unknown> extends ItemDragEvent<DATA> {
   resizeType: ResizeType;
-}
-
-export interface IItem<DATA = any> {
-  id: string;
-  width: number;
-  height: number;
-  x: number;
-  y: number;
-  data: DATA | undefined;
-}
-
-export class Item<DATA = any> implements IItem<DATA> {
-  public id: string = '';
-  public width: number = 1;
-  public height: number = 1;
-  public x: number = 0;
-  public y: number = 0;
-  public data: DATA | undefined = undefined;
-
-  /**
-   * Create a new item
-   * @param id {string|null|undefined} Will be generated if not provided
-   * @param x {number} X coordinate
-   * @param y {number} Y coordinate
-   * @param width {number} Width in columns
-   * @param height {number} Height in rows
-   * @param data {any} Optional data
-   */
-  public constructor(
-    id: string | null | undefined,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    data: DATA | undefined = undefined) {
-    this.id = id == undefined ? crypto.randomUUID().toString() : id;
-    this.width = width;
-    this.height = height;
-    this.x = x;
-    this.y = y;
-    this.data = data;
-  }
 }

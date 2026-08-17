@@ -33,7 +33,7 @@
         <input type="number" [(ngModel)]="columns" placeholder="cols">
       </label>
       <label class="col"> Rows:
-        <input type="number" [(ngModel)]="rows" placeholder="rows">
+        <input type="number" [(ngModel)]="rowsTop" placeholder="rows">
       </label>
       <label class="col"> Col Gap:
         <app-height-prop-picker [heightValue]="20" [heightUnit]="'px'" (heightProp)="colGap = $event"></app-height-prop-picker>
@@ -63,16 +63,16 @@
   <button class="add-button" (click)="addItemTop()">Add Item</button>
 </div>
 
-<ddl-grid [columns]="columns" #gridTop class="grid-top"
-          [rows]="rows"
+<ddl-grid gridId="grid-top" [connectedTo]="['grid-bottom']" [columns]="columns" class="grid-top"
+          [(rows)]="rowsTop"
           [colGap]="colGap"
           [rowGap]="rowGap"
           [gridHeight]="gridHeight"
           [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
-          (itemDropped)="itemDroppedTop($event)"
           [scrollableElement]="document"
           [(items)]="itemsTop">
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"
+            [itemId]="item.id"
             [resizable]="isResizable"
             [draggable]="isDraggable"
             [disabled]="isDisabled"
@@ -84,7 +84,7 @@
   </ddl-item>
 </ddl-grid>
 
-<div class="drag-items" ddlDragItems [grids]="[gridTop, gridBottom]">
+<div class="drag-items" ddlDragItems [targets]="['grid-top', 'grid-bottom']">
   <div ddlDragItem
        class="drag-item"
        [draggable]="true"
@@ -96,14 +96,13 @@
        *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
 </div>
 
-<ddl-grid [columns]="columns" #gridBottom class="grid-bottom"
-          [rows]="rows"
+<ddl-grid gridId="grid-bottom" [connectedTo]="['grid-top']" [columns]="columns" class="grid-bottom"
+          [(rows)]="rowsBottom"
           [colGap]="colGap"
           [rowGap]="rowGap"
           [scrollableElement]="document"
-          (itemDropped)="itemDroppedBottom($event)"
           [(items)]="itemsBottom">
-  <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
+  <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [itemId]="item.id" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
     <span class="item-info-data">{{item.data}}</span>
     <button *ngIf="showRemoveItemButton" class="remove-item-btn" (click)="removeItemBottom(item.id)">x</button>

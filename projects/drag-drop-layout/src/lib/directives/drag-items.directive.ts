@@ -1,42 +1,23 @@
-import {
-  AfterViewInit,
-  ContentChildren, DestroyRef,
-  Directive,
-  input,
-  InputSignal,
-  QueryList
-} from '@angular/core';
-import {DragItemDirective} from "./drag-item.directive";
-import {GridComponent} from "../grid/grid.component";
-import {GridDragItemService} from "../services/grid-drag-item.service";
-import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import {AfterContentInit, ContentChildren, DestroyRef, Directive, effect, input, QueryList} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {DragItemDirective} from './drag-item.directive';
 
-@Directive({
-  selector: '[ddlDragItems]',
-})
-export class DragItemsDirective implements AfterViewInit {
-  @ContentChildren(DragItemDirective, {descendants: true}) private itemDirectives!: QueryList<DragItemDirective>;
+@Directive({selector: '[ddlDragItems]'})
+export class DragItemsDirective implements AfterContentInit {
+  @ContentChildren(DragItemDirective, {descendants: true}) private items!: QueryList<DragItemDirective>;
 
-  // Inputs
-  public grids: InputSignal<GridComponent[]> = input<GridComponent[]>([]);
+  public readonly targets = input<readonly string[]>([]);
 
-  constructor(
-    private gridDragItemService: GridDragItemService,
-    private destroyRef: DestroyRef,
-  ) { }
-
-  public ngAfterViewInit(): void {
-    this.itemDirectives.changes.pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe(() => {
-      this.registerItems();
-    });
-    this.registerItems();
+  public constructor(private readonly destroyRef: DestroyRef) {
+    effect(() => this.assignTargets(this.targets()));
   }
 
-  private registerItems(): void {
-    this.grids().forEach((grid) => {
-      this.gridDragItemService.registerItems(grid, this.itemDirectives.toArray());
-    });
+  public ngAfterContentInit(): void {
+    this.items.changes.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.assignTargets(this.targets()));
+    this.assignTargets(this.targets());
+  }
+
+  private assignTargets(targets: readonly string[]): void {
+    this.items?.forEach((item) => item.setTargets(targets));
   }
 }
