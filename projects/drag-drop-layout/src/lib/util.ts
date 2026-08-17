@@ -1,9 +1,8 @@
-import {IPosition} from "./definitions";
+import {IPosition} from './definitions';
 
 export function clamp(min: number, max: number, value: number): number {
   return Math.min(Math.max(value, min), max);
 }
-
 
 /**
  * Returns the scroll offset of the scrollable element

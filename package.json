@@ -1,7 +1,6 @@
 {
   "name": "angular-grid-layout",
-  "version": "1.3.1",
-  "types": "dist/index.d.ts",
+  "version": "2.0.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -13,7 +12,10 @@
     "watch": "ng build --watch --configuration development",
     "watch:lib": "ng build drag-drop-layout --watch --configuration development",
     "serve:client": "ng serve client --port 80 --host 0.0.0.0",
-    "test": "ng test",
+    "test": "npm run test:lib && npm run test:client",
+    "test:lib": "ng test drag-drop-layout --watch=false --browsers=ChromeHeadless",
+    "test:client": "ng test client --watch=false --browsers=ChromeHeadless",
+    "verify": "npm test && npm run build",
     "serve:ssr:client": "node dist/client/server/server.mjs",
     "release": "standard-version"
   },

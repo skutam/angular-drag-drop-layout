@@ -4,7 +4,7 @@ import {Directive, HostListener, input, output} from '@angular/core';
   selector: '[ddlDragHandle]',
   host: {
     '[draggable]': 'draggable() && !disabled()',
-    '[disabled]': 'disabled()',
+    '[attr.disabled]': 'disabled() ? true : null',
     '[style.cursor]': 'disabled() ? "not-allowed" : (draggable() ? "move" : "default")',
   },
 })

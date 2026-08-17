@@ -1,3 +1,34 @@
+<div class="group-flex-column placement-controls">
+  <h2>Widget placement</h2>
+  <div class="group-flex-row">
+    <label>New widget sizing:
+      <select [(ngModel)]="insertionSizing">
+        <option value="fit-width">Fit available width</option>
+        <option value="fixed">Keep size</option>
+      </select>
+    </label>
+    <label>Preferred width:
+      <input type="number" min="1" step="1" [ngModel]="preferredWidth" (ngModelChange)="setPreferredWidth($event)">
+    </label>
+    <label>Minimum insertion width:
+      <input type="number" min="1" step="1" [max]="preferredWidth" [ngModel]="minInsertionWidth" (ngModelChange)="setMinimumWidth($event)">
+    </label>
+    <label>Direction preference:
+      <select [(ngModel)]="movePriority">
+        <option *ngFor="let order of directionOrders" [ngValue]="order.value">{{order.label}}</option>
+      </select>
+    </label>
+    <label><input type="checkbox" [(ngModel)]="allowRowGrowth"> Allow new rows</label>
+  </div>
+  <div class="group-flex-row">
+    <button (click)="loadScenario('gap')">Half-row gap</button>
+    <button (click)="loadScenario('cascade')">Minimal movement</button>
+    <button (click)="loadScenario('full')">Full grid</button>
+    <button (click)="loadScenario('transfer')">Transfer</button>
+  </div>
+  <p role="status">{{placementMessage}}</p>
+</div>
+
 <div class="group-flex-column">
   <h2>Resize Types:</h2>
   <div class="group-flex-row">
@@ -33,7 +64,7 @@
         <input type="number" [(ngModel)]="columns" placeholder="cols">
       </label>
       <label class="col"> Rows:
-        <input type="number" [(ngModel)]="rows" placeholder="rows">
+        <input type="number" [(ngModel)]="rowsTop" placeholder="rows">
       </label>
       <label class="col"> Col Gap:
         <app-height-prop-picker [heightValue]="20" [heightUnit]="'px'" (heightProp)="colGap = $event"></app-height-prop-picker>
@@ -63,16 +94,18 @@
   <button class="add-button" (click)="addItemTop()">Add Item</button>
 </div>
 
-<ddl-grid [columns]="columns" #gridTop class="grid-top"
-          [rows]="rows"
+<ddl-grid gridId="grid-top" [connectedTo]="['grid-bottom']" [columns]="columns" class="grid-top"
+          [movePriority]="movePriority" [allowRowGrowth]="allowRowGrowth"
+          (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
+          [(rows)]="rowsTop"
           [colGap]="colGap"
           [rowGap]="rowGap"
           [gridHeight]="gridHeight"
           [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
-          (itemDropped)="itemDroppedTop($event)"
           [scrollableElement]="document"
           [(items)]="itemsTop">
   <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"
+            [itemId]="item.id"
             [resizable]="isResizable"
             [draggable]="isDraggable"
             [disabled]="isDisabled"
@@ -84,26 +117,30 @@
   </ddl-item>
 </ddl-grid>
 
-<div class="drag-items" ddlDragItems [grids]="[gridTop, gridBottom]">
+<div class="drag-items" ddlDragItems [targets]="['grid-top', 'grid-bottom']">
   <div ddlDragItem
        class="drag-item"
        [draggable]="true"
        [disabled]="i == 1"
-       [width]="columns"
+       [width]="preferredWidth"
+       [insertionSizing]="insertionSizing"
+       [minInsertionWidth]="minInsertionWidth"
        [height]="1"
        [dragData]="i"
        [scrollableElement]="document"
        *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
 </div>
 
-<ddl-grid [columns]="columns" #gridBottom class="grid-bottom"
-          [rows]="rows"
+<ddl-grid gridId="grid-bottom" [connectedTo]="['grid-top']" [columns]="columns" class="grid-bottom"
+          [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
+          [movePriority]="movePriority" [allowRowGrowth]="allowRowGrowth"
+          (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
+          [(rows)]="rowsBottom"
           [colGap]="colGap"
           [rowGap]="rowGap"
           [scrollableElement]="document"
-          (itemDropped)="itemDroppedBottom($event)"
           [(items)]="itemsBottom">
-  <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [resizeTypes]="resizeTypes">
+  <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [itemId]="item.id" [resizeTypes]="resizeTypes">
     <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
     <span class="item-info-data">{{item.data}}</span>
     <button *ngIf="showRemoveItemButton" class="remove-item-btn" (click)="removeItemBottom(item.id)">x</button>

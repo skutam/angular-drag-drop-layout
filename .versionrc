@@ -6,6 +6,10 @@
       {
         "filename": "projects/drag-drop-layout/package.json",
         "type": "json"
+      },
+      {
+        "filename": "package-lock.json",
+        "type": "json"
       }
     ],
     "bumpFiles": [
@@ -15,6 +19,10 @@
       },
       {
         "filename": "projects/drag-drop-layout/package.json",
+        "type": "json"
+      },
+      {
+        "filename": "package-lock.json",
         "type": "json"
       }
     ]

@@ -1,5 +1,5 @@
 import {
-  AfterViewInit,
+  AfterContentInit,
   ChangeDetectionStrategy,
   Component,
   ContentChildren,
@@ -13,20 +13,15 @@ import {
   output,
   OutputRefSubscription,
   QueryList,
-  Signal,
   signal,
 } from '@angular/core';
-import {Item, ItemDragEvent, ItemResizeEvent, ResizeType} from "./item.definitions";
-import {DragHandleDirective} from "../directives/drag-handle.directive";
-import {take, takeUntil} from "rxjs";
-import {GridService} from "../services/grid.service";
-import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
-import {getScrollOffset} from "../util";
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {take, takeUntil} from 'rxjs';
+import {DragHandleDirective} from '../directives/drag-handle.directive';
+import {getScrollOffset} from '../util';
+import {GridService} from '../services/grid.service';
+import {GridItem, ItemDragEvent, ItemResizeEvent, ResizeType} from './item.definitions';
 
-/**
- * Item component that can be dragged and resized.
- * This class is mainly responsible for handling the drag and resize events and also for updating the item's position and size.
- */
 @Component({
   selector: 'ddl-item',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,188 +29,129 @@ import {getScrollOffset} from "../util";
   styleUrl: './item.component.css',
   host: {
     '[draggable]': 'draggable() && dragHandles.length === 0 && !disabled()',
-    '[disabled]': 'disabled()',
+    '[attr.disabled]': 'disabled() ? true : null',
     '[style.cursor]': 'disabled() ? "not-allowed" : (draggable() && dragHandles.length === 0 ? "move" : "default")',
+    '[style.visibility]': 'previewHidden() ? "hidden" : null',
   },
 })
-// TODO: Add change indicator to this class, so when resizing/dragging we know when to recalculate the position of other items
-export class ItemComponent implements AfterViewInit, OnDestroy {
-  public id: string = `${crypto.randomUUID()}`;
-
+export class ItemComponent implements AfterContentInit, OnDestroy {
   @ContentChildren(DragHandleDirective, {descendants: true}) protected dragHandles!: QueryList<DragHandleDirective>;
 
-  // Will be updated from grid
-  public x = signal(0);
-  public y = signal(0);
-  public width = signal(1);
-  public height = signal(1);
-  public data = signal<any>(undefined);
-  /**
-   * The element that can be scrolled to calculate the scroll offset. It is the same as the grid's scrollable element.
-   */
-  public scrollableElement = signal<HTMLElement | Document | null>(null);
+  public readonly itemId = input.required<string>();
+  public readonly resizeTypes = input<ResizeType[]>(['bottom-left']);
+  public readonly draggable = input(true);
+  public readonly resizable = input(true);
+  public readonly disabled = input(false);
 
-  // Inputs
-  public resizeTypes = input<ResizeType[]>(['bottom-left']);
-  public draggable = input(true);
-  public resizable = input(true);
-  public disabled = input(false);
+  public readonly dragStart = output<ItemDragEvent>();
+  public readonly dragMove = output<ItemDragEvent>();
+  public readonly dragEnd = output<ItemDragEvent>();
+  public readonly resizeStart = output<ItemResizeEvent>();
+  public readonly resizeMove = output<ItemResizeEvent>();
+  public readonly resizeEnd = output<ItemResizeEvent>();
 
-  // Outputs
-  public dragStart = output<ItemDragEvent>();
-  public dragMove = output<ItemDragEvent>();
-  public dragEnd = output<ItemDragEvent>();
-  public resizeStart = output<ItemResizeEvent>();
-  public resizeMove = output<ItemResizeEvent>();
-  public resizeEnd = output<ItemResizeEvent>();
+  public readonly x = signal(1);
+  public readonly y = signal(1);
+  public readonly width = signal(1);
+  public readonly height = signal(1);
+  public readonly data = signal<unknown>(undefined);
+  public readonly scrollableElement = signal<HTMLElement | Document | null>(null);
+  public readonly previewHidden = signal(false);
+  public readonly element: HTMLDivElement;
 
-  @HostListener('pointerdown', ['$event'])
-  public hostStartDrag(event: PointerEvent) {
-    /**
-     * Only start dragging if the left mouse button is pressed.
-     * https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
-     */
-    if (event.button !== 0 && event.buttons !== 1) {
-      return;
-    }
-
-    if (!this.draggable() || this.disabled()) {
-      return;
-    }
-
-    event.preventDefault();
-
-    // When there are no drag handles, the whole item can be dragged.
-    if (this.dragHandles.length !== 0) {
-      return;
-    }
-
-    // Check if the event target is the element itself, not a child element.
-    if (event.target !== this.item.nativeElement) {
-      return;
-    }
-
-    this.startDrag(event);
-  }
-
-  private dragHandleDragStartSubscriptions: OutputRefSubscription[] = [];
-
-  public element: HTMLDivElement;
+  private dragHandleSubscriptions: OutputRefSubscription[] = [];
 
   public constructor(
-    @Inject(ElementRef) private item: ElementRef<HTMLDivElement>,
-    private gridService: GridService,
-    private destroyRef: DestroyRef,
+    @Inject(ElementRef) item: ElementRef<HTMLDivElement>,
+    private readonly gridService: GridService,
+    private readonly destroyRef: DestroyRef,
   ) {
-    this.registerPropertyEffect('--ddl-item-x', this.x);
-    this.registerPropertyEffect('--ddl-item-y', this.y);
-    this.registerPropertyEffect('--ddl-item-width', this.width);
-    this.registerPropertyEffect('--ddl-item-height', this.height);
-    this.element = this.item.nativeElement;
+    this.element = item.nativeElement;
+    this.bindCssProperty('--ddl-item-x', this.x);
+    this.bindCssProperty('--ddl-item-y', this.y);
+    this.bindCssProperty('--ddl-item-width', this.width);
+    this.bindCssProperty('--ddl-item-height', this.height);
   }
 
-  public ngAfterViewInit(): void {
-    this.dragHandles.changes.pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe(() => this.registerDragHandles());
+  public ngAfterContentInit(): void {
+    this.dragHandles.changes.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.registerDragHandles());
     this.registerDragHandles();
   }
 
   public ngOnDestroy(): void {
-    this.dragHandleDragStartSubscriptions.forEach((subscription) => subscription.unsubscribe());
-    this.dragHandleDragStartSubscriptions = [];
+    this.dragHandleSubscriptions.forEach((subscription) => subscription.unsubscribe());
   }
 
-  private registerDragHandles(): void {
-    // Set cursor
-    this.item.nativeElement.style.cursor = this.dragHandles.length === 0 && this.draggable() ? 'move' : 'default';
-
-    // Unsubscribe from previous drag handles
-    this.dragHandleDragStartSubscriptions.forEach((subscription) => subscription.unsubscribe());
-    this.dragHandleDragStartSubscriptions = [];
-
-    this.dragHandles.forEach((dragHandle) => {
-      dragHandle.draggable = this.draggable;
-      dragHandle.disabled = this.disabled;
-    });
-
-    // Subscribe to new drag handles
-    if (this.draggable()) {
-      this.dragHandleDragStartSubscriptions.push(
-        ...this.dragHandles.map((dragHandle) => dragHandle.dragStart.subscribe((event) => this.startDrag(event)))
-      );
-    }
+  @HostListener('pointerdown', ['$event'])
+  public hostStartDrag(event: PointerEvent): void {
+    if ((event.button !== 0 && event.buttons !== 1) || !this.draggable() || this.disabled()) return;
+    if (this.dragHandles.length !== 0 || event.target !== this.element) return;
+    event.preventDefault();
+    this.startDrag(event);
   }
 
-  private startDrag(event: PointerEvent): void {
-    this.dragStart.emit({
-      item: this.getItem(),
-      event: event,
-      scroll: getScrollOffset(this.scrollableElement()),
-    });
-
+  public startDrag(event: PointerEvent): void {
+    this.dragStart.emit({item: this.getItem(), event, scroll: getScrollOffset(this.scrollableElement())});
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event, scroll}) => {
-      this.dragMove.emit({
-        item: this.getItem(),
-        event: event,
-        scroll: scroll,
-      });
-    });
-
-    this.gridService.pointerEnd$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      take(1),
-    ).subscribe(({event, scroll}) => {
-      this.dragEnd.emit({
-        item: this.getItem(),
-        event: event,
-        scroll: scroll,
-      });
-    });
+    ).subscribe(({event: pointer, scroll}) => this.dragMove.emit({item: this.getItem(), event: pointer, scroll}));
+    this.gridService.pointerEnd$.pipe(takeUntilDestroyed(this.destroyRef), take(1))
+      .subscribe(({event: pointer, scroll}) => this.dragEnd.emit({item: this.getItem(), event: pointer, scroll}));
   }
 
   public startResize(event: PointerEvent, resizeType: ResizeType): void {
     event.preventDefault();
     event.stopPropagation();
-
-    this.resizeStart.emit({
-      item: this.getItem(),
-      event: event,
-      resizeType: resizeType,
-      scroll: getScrollOffset(this.scrollableElement()),
-    });
-
+    this.resizeStart.emit({item: this.getItem(), event, resizeType, scroll: getScrollOffset(this.scrollableElement())});
     this.gridService.pointerMove$.pipe(
       takeUntilDestroyed(this.destroyRef),
       takeUntil(this.gridService.pointerEnd$),
-    ).subscribe(({event, scroll}) => this.resizeMove.emit({
-      item: this.getItem(),
-      event: event,
-      resizeType: resizeType,
-      scroll,
-    }))
-
-    this.gridService.pointerEnd$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      take(1),
-    ).subscribe(({event, scroll}) => this.resizeEnd.emit({
-      item: this.getItem(),
-      event: event,
-      resizeType: resizeType,
-      scroll,
-    }));
+    ).subscribe(({event: pointer, scroll}) => this.resizeMove.emit({item: this.getItem(), event: pointer, resizeType, scroll}));
+    this.gridService.pointerEnd$.pipe(takeUntilDestroyed(this.destroyRef), take(1))
+      .subscribe(({event: pointer, scroll}) => this.resizeEnd.emit({item: this.getItem(), event: pointer, resizeType, scroll}));
   }
 
-  private registerPropertyEffect(property: string, signalValue: Signal<any>): void {
-    effect(() => {
-      this.item.nativeElement.style.setProperty(property, signalValue().toString());
+  public render(item: GridItem, hidden = false): void {
+    this.x.set(item.x);
+    this.y.set(item.y);
+    this.width.set(item.width);
+    this.height.set(item.height);
+    this.data.set(item.data);
+    this.setPreviewHidden(hidden);
+    this.element.style.setProperty('--ddl-item-x', item.x.toString());
+    this.element.style.setProperty('--ddl-item-y', item.y.toString());
+    this.element.style.setProperty('--ddl-item-width', item.width.toString());
+    this.element.style.setProperty('--ddl-item-height', item.height.toString());
+  }
+
+  public setPreviewHidden(hidden: boolean): void {
+    this.previewHidden.set(hidden);
+    this.element.style.visibility = hidden ? 'hidden' : '';
+  }
+
+  public getItem(): GridItem {
+    return Object.freeze({
+      id: this.itemId(),
+      x: this.x(),
+      y: this.y(),
+      width: this.width(),
+      height: this.height(),
+      data: this.data(),
     });
   }
 
-  public getItem(): Item {
-    return new Item(this.id, this.x(), this.y(), this.width(), this.height(), this.data());
+  private registerDragHandles(): void {
+    this.dragHandleSubscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.dragHandleSubscriptions = [];
+    this.dragHandles.forEach((handle) => {
+      handle.draggable = this.draggable;
+      handle.disabled = this.disabled;
+      this.dragHandleSubscriptions.push(handle.dragStart.subscribe((event) => this.startDrag(event)));
+    });
+  }
+
+  private bindCssProperty(property: string, value: {(): number}): void {
+    effect(() => this.element.style.setProperty(property, value().toString()));
   }
 }

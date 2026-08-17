@@ -4,6 +4,10 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "../../out-tsc/spec",
+    "baseUrl": "../..",
+    "paths": {
+      "@skutam/drag-drop-layout": ["projects/drag-drop-layout/src/public-api.ts"]
+    },
     "types": [
       "jasmine"
     ]
