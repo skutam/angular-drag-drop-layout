@@ -188,7 +188,6 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
       operation,
       movePriority: this.movePriority(),
       allowRowGrowth: this.allowRowGrowth(),
-      mayRelocateActive: operation === 'insert',
     });
 
     if (!result.ok) {
@@ -363,7 +362,11 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
     const byId = new Map(items.map((item) => [item.id, item]));
     this.itemComponents.forEach((component) => {
       const item = byId.get(component.itemId()) ?? this.lastValidItems.find((candidate) => candidate.id === component.itemId());
-      if (item) component.render(item, component.itemId() === hiddenItemId);
+      if (item) {
+        component.render(item, component.itemId() === hiddenItemId);
+      } else {
+        component.setPreviewHidden(true);
+      }
     });
   }
 

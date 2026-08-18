@@ -110,7 +110,7 @@ describe('LayoutEngine', () => {
     if (result.ok) expect(result.rows).toBe(4);
   });
 
-  it('places a one-row insertion below a two-row last blocker when that grows less', () => {
+  it('keeps an insertion at the requested row even when moving the blocker grows more', () => {
     const result = engine.resolvePlacement(request(
       [item('blocker', 1, 1, 1, 2)],
       item('new', 1, 2),
@@ -119,14 +119,40 @@ describe('LayoutEngine', () => {
         rows: 2,
         operation: 'insert',
         movePriority: ['bottom'],
-        mayRelocateActive: true,
       },
     ));
     expect(result.ok).toBeTrue();
     if (!result.ok) return;
-    expect(result.rows).toBe(3);
-    expect(result.items.find((entry) => entry.id === 'new')?.y).toBe(3);
-    expect(result.items.find((entry) => entry.id === 'blocker')?.y).toBe(1);
+    expect(result.rows).toBe(4);
+    expect(result.items.find((entry) => entry.id === 'new')?.y).toBe(2);
+    expect(result.items.find((entry) => entry.id === 'blocker')?.y).toBe(3);
+  });
+
+  it('inserts into the middle of a full grid and cascades original items downward', () => {
+    const result = engine.resolvePlacement(request(
+      [item('a', 1, 1), item('b', 1, 2), item('c', 1, 3), item('d', 1, 4)],
+      item('new', 1, 2),
+      {columns: 1, rows: 4, operation: 'insert'},
+    ));
+    expect(result.ok).toBeTrue();
+    if (!result.ok) return;
+    expect(result.rows).toBe(5);
+    expect(result.items.map((entry) => `${entry.id}:${entry.y}`))
+      .toEqual(['a:1', 'b:3', 'c:4', 'd:5', 'new:2']);
+  });
+
+  it('moves a later item between original tall blockers and grows the cascade', () => {
+    const result = engine.resolvePlacement(request(
+      [item('a', 1, 1, 1, 2), item('b', 1, 3, 1, 2), item('new', 1, 5)],
+      item('new', 1, 2),
+      {columns: 1, rows: 5, operation: 'move'},
+    ));
+    expect(result.ok).toBeTrue();
+    if (!result.ok) return;
+    expect(result.rows).toBe(6);
+    expect(result.items.find((entry) => entry.id === 'new')?.y).toBe(2);
+    expect(result.items.find((entry) => entry.id === 'a')?.y).toBe(3);
+    expect(result.items.find((entry) => entry.id === 'b')?.y).toBe(5);
   });
 
   it('does not automatically remove existing rows', () => {

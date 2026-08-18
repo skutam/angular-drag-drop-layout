@@ -22,7 +22,6 @@ export interface PlacementRequest<DATA = unknown> extends LayoutSnapshot<DATA> {
   readonly operation: PlacementOperation;
   readonly movePriority: readonly MoveDirection[];
   readonly allowRowGrowth: boolean;
-  readonly mayRelocateActive?: boolean;
 }
 
 export interface PlacementSuccess<DATA = unknown> {

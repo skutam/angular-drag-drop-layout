@@ -42,22 +42,14 @@ export class LayoutEngine {
       state,
       request.active.id,
       new Set([request.active.id]),
-      order,
+      resultOrder,
       request,
       new Set(),
     );
 
-    const fixedActiveResult = resolved && !hasAnyOverlap(resolved.items)
-      ? success(resolved, resultOrder)
-      : null;
-    const relocated = request.mayRelocateActive && canGrow(request)
-      ? this.relocateActiveBelowLayout(request, resultOrder)
-      : null;
-    if (fixedActiveResult && relocated) {
-      return relocated.rows < fixedActiveResult.rows ? relocated : fixedActiveResult;
+    if (resolved && !hasAnyOverlap(resolved.items)) {
+      return success(resolved, resultOrder);
     }
-    if (fixedActiveResult) return fixedActiveResult;
-    if (relocated) return relocated;
 
     return failure('no-space', request.active);
   }
@@ -82,7 +74,6 @@ export class LayoutEngine {
         operation: 'normalize',
         movePriority,
         allowRowGrowth,
-        mayRelocateActive: true,
       });
       if (!next.ok) {
         return next;
@@ -101,27 +92,19 @@ export class LayoutEngine {
     visited: Set<string>,
   ): MutableLayout<DATA> | null {
     const fixed = state.items.get(fixedId)!;
-    const collisions = stableOrder
+    const blocker = stableOrder
       .filter((id) => id !== fixedId)
       .map((id) => state.items.get(id))
-      .filter((item): item is GridItem<DATA> => !!item && overlaps(fixed, item));
+      .find((item): item is GridItem<DATA> => !!item && overlaps(fixed, item));
 
-    if (collisions.length === 0) {
+    if (!blocker) {
       return state;
     }
 
-    let branch = cloneState(state);
-    for (const blocker of collisions) {
-      if (locked.has(blocker.id)) {
-        return null;
-      }
-      const moved = this.moveBlocker(branch, blocker.id, fixedId, locked, stableOrder, request, visited);
-      if (!moved) {
-        return null;
-      }
-      branch = moved;
+    if (locked.has(blocker.id)) {
+      return null;
     }
-    return branch;
+    return this.moveBlocker(state, blocker.id, fixedId, locked, stableOrder, request, visited);
   }
 
   private moveBlocker<DATA>(
@@ -159,7 +142,7 @@ export class LayoutEngine {
       branchVisited.add(signature);
       const nextLocked = new Set(locked);
       nextLocked.add(blockerId);
-      const resolved = this.clearCollisions(
+      const clearedBlocker = this.clearCollisions(
         branch,
         blockerId,
         nextLocked,
@@ -167,33 +150,26 @@ export class LayoutEngine {
         request,
         branchVisited,
       );
-      if (resolved) {
-        return resolved;
+      if (!clearedBlocker) {
+        continue;
+      }
+
+      // A direction succeeds only when the entire original collision set can
+      // also be resolved. Keeping this continuation inside the direction loop
+      // allows a later failure to backtrack to the next priority direction.
+      const clearedFixed = this.clearCollisions(
+        clearedBlocker,
+        obstacleId,
+        locked,
+        stableOrder,
+        request,
+        branchVisited,
+      );
+      if (clearedFixed) {
+        return clearedFixed;
       }
     }
 
-    return null;
-  }
-
-  private relocateActiveBelowLayout<DATA>(
-    request: PlacementRequest<DATA>,
-    resultOrder: readonly string[],
-  ): PlacementSuccess<DATA> | null {
-    const baseItems = request.items.filter((item) => item.id !== request.active.id);
-    const firstFreeRow = Math.max(request.rows + 1, ...baseItems.map((item) => bottom(item) + 1));
-    const maxX = request.columns - request.active.width + 1;
-    for (let y = request.rows + 1; y <= firstFreeRow; y++) {
-      for (let x = 1; x <= maxX; x++) {
-        const active = freezeItem({...request.active, x, y});
-        if (baseItems.every((item) => !overlaps(active, item))) {
-          const state: MutableLayout<DATA> = {
-            items: new Map([...baseItems, active].map((item) => [item.id, item])),
-            rows: bottom(active),
-          };
-          return success(state, resultOrder);
-        }
-      }
-    }
     return null;
   }
 

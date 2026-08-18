@@ -58,17 +58,100 @@ describe('GridComponent', () => {
     expect(fixture.componentInstance.itemsA.find((entry) => entry.id === 'first')?.x).toBe(2);
   }));
 
-  it('commits the minimum row growth from normalization through the rows model', fakeAsync(() => {
+  it('keeps a later programmatic item fixed and grows rows for the displaced blocker', fakeAsync(() => {
     const fixture = TestBed.createComponent(HostComponent);
     fixture.componentInstance.columns = 1;
     fixture.componentInstance.itemsA = [item('blocker', 1, 1, 1, 2), item('new', 1, 2)];
     fixture.detectChanges();
     tick();
     fixture.detectChanges();
-    expect(fixture.componentInstance.rowsA).toBe(3);
+    expect(fixture.componentInstance.rowsA).toBe(4);
     expect(fixture.componentInstance.itemsA.find((entry) => entry.id === 'new')?.y)
       .withContext(JSON.stringify(fixture.componentInstance.itemsA))
-      .toBe(3);
+      .toBe(2);
+    expect(fixture.componentInstance.itemsA.find((entry) => entry.id === 'blocker')?.y).toBe(3);
+  }));
+
+  it('adds a fresh-array item between items that were present during initialization', fakeAsync(() => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.columns = 1;
+    fixture.componentInstance.rowsA = 4;
+    fixture.componentInstance.itemsA = [
+      item('a', 1, 1),
+      item('b', 1, 2),
+      item('c', 1, 3),
+      item('d', 1, 4),
+    ];
+    fixture.detectChanges();
+    tick();
+
+    fixture.componentInstance.itemsA = [...fixture.componentInstance.itemsA, item('new', 1, 2)];
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.rowsA).toBe(5);
+    expect(fixture.componentInstance.itemsA.map((entry) => `${entry.id}:${entry.y}`))
+      .toEqual(['a:1', 'b:3', 'c:4', 'd:5', 'new:2']);
+  }));
+
+  it('lets an immutably added item move through original blockers', fakeAsync(() => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.columns = 1;
+    fixture.componentInstance.rowsA = 5;
+    fixture.componentInstance.itemsA = [item('a', 1, 1, 1, 2), item('b', 1, 3, 1, 2)];
+    fixture.detectChanges();
+    tick();
+
+    fixture.componentInstance.itemsA = [...fixture.componentInstance.itemsA, item('new', 1, 5)];
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    const grid = fixture.componentInstance.gridA;
+    const snapshot = grid.snapshot();
+    expect(snapshot.items.map((entry) => entry.id)).toEqual(['a', 'b', 'new']);
+
+    const session = makeSession('move', item('new', 1, 5), grid.interactionGridId, snapshot);
+    session.geometries.set(grid.interactionGridId, {
+      ...geometry,
+      rowHeights: [50, 50, 50, 50, 50],
+    });
+    const preview = grid.preview(session, snapshot, {x: 20, y: 70}, {x: 0, y: 0});
+    expect(preview.result.ok).toBeTrue();
+    if (!preview.result.ok) return;
+    expect(preview.result.rows).toBe(6);
+    expect(preview.result.items.find((entry) => entry.id === 'new')?.y).toBe(2);
+  }));
+
+  it('accepts an immutable item removal', fakeAsync(() => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.itemsA = [item('remove', 1, 1), item('keep', 2, 1)];
+    fixture.detectChanges();
+    tick();
+
+    fixture.componentInstance.itemsA = fixture.componentInstance.itemsA
+      .filter((entry) => entry.id !== 'remove');
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.gridA.snapshot().items).toEqual([item('keep', 2, 1)]);
+  }));
+
+  it('accepts an immutable item replacement in a new array', fakeAsync(() => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.itemsA = [item('replace', 1, 1)];
+    fixture.detectChanges();
+    tick();
+
+    fixture.componentInstance.itemsA = fixture.componentInstance.itemsA
+      .map((entry) => entry.id === 'replace' ? item('replace', 2, 2) : entry);
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.gridA.snapshot().items).toEqual([item('replace', 2, 2)]);
   }));
 
   it('preserves the last valid layout when a requested row reduction cannot fit', fakeAsync(() => {
@@ -138,7 +221,7 @@ describe('GridComponent', () => {
 });
 
 function makeSession(
-  operation: 'insert' | 'resize',
+  operation: 'insert' | 'move' | 'resize',
   active: GridItem,
   gridId: string,
   snapshot: ReturnType<GridComponent['snapshot']>,
@@ -147,11 +230,11 @@ function makeSession(
   return {
     pointerId: 1,
     operation,
-    sourceGridId: operation === 'resize' ? gridId : null,
+    sourceGridId: operation === 'insert' ? null : gridId,
     item: active,
     itemOffset: {x: 0, y: 0},
     allowedTargets: new Set([gridId]),
-    sourceSnapshot: operation === 'resize' ? snapshot : null,
+    sourceSnapshot: operation === 'insert' ? null : snapshot,
     resizeType,
     geometries: new Map(),
     snapshots: new Map([[gridId, snapshot]]),

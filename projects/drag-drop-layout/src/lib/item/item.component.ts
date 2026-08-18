@@ -118,11 +118,15 @@ export class ItemComponent implements AfterViewInit, OnDestroy {
     this.width.set(item.width);
     this.height.set(item.height);
     this.data.set(item.data);
-    this.previewHidden.set(hidden);
+    this.setPreviewHidden(hidden);
     this.element.style.setProperty('--ddl-item-x', item.x.toString());
     this.element.style.setProperty('--ddl-item-y', item.y.toString());
     this.element.style.setProperty('--ddl-item-width', item.width.toString());
     this.element.style.setProperty('--ddl-item-height', item.height.toString());
+  }
+
+  public setPreviewHidden(hidden: boolean): void {
+    this.previewHidden.set(hidden);
     this.element.style.visibility = hidden ? 'hidden' : '';
   }
 
