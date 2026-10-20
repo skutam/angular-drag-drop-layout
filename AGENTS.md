@@ -5,7 +5,7 @@
 This Angular workspace contains two projects under `projects/`:
 
 - `projects/drag-drop-layout/` is the publishable library. Components, directives, services, and shared definitions live in `src/lib/`; add public exports to `src/public-api.ts`.
-- `projects/client/` is the demo application used to exercise the library. Its Angular source is in `src/`, static assets are in `public/`, and server support starts in `server.ts`.
+- `projects/client/` is the demo application used to exercise the library. Its Angular source is in `src/`, static assets are in `public/`, and it is deployed as a static application.
 
 Generated packages and application bundles are written to `dist/`; do not edit or commit generated output. Keep tests next to the code they cover as `*.spec.ts`.
 
@@ -16,8 +16,11 @@ Generated packages and application bundles are written to `dist/`; do not edit o
 - `npm run serve:client` serves the demo on port 80 for interactive development.
 - `npm run build` creates production builds of both the library and demo client.
 - `npm run build:lib` or `npm run build:client` builds one project only.
-- `npm test` runs the Angular Karma/Jasmine test targets in Chrome.
+- `npm test` runs both Angular Vitest targets in Playwright Chromium. Install it with `npx playwright install chromium` first.
+- `npm run test:demo` checks the built demo in Chromium; run `npm run build` first.
 - `npm run build:lib:locally` builds and packs a local library tarball under `dist/`.
+- `npm run test:compatibility` tests the packed library in Angular 20/21/22 with Zone.js and zoneless change detection. Install Chromium with `npx playwright install chromium` first.
+- `npm run audit:security` blocks high/critical advisories; `npm run verify:release` also includes package compatibility checks.
 
 Run the focused build and relevant tests before opening a pull request.
 
@@ -29,7 +32,7 @@ Use Angular conventions: PascalCase for classes and types, camelCase for members
 
 ## Testing Guidelines
 
-Tests use Jasmine with Karma and should be named `*.spec.ts` beside their subject. Cover behavior changes and regressions, especially drag, resize, grid-placement, and signal-driven state. No minimum coverage threshold is configured, so reviewers expect meaningful assertions rather than coverage-only tests.
+Tests use Vitest with Playwright Chromium and should be named `*.spec.ts` beside their subject. Cover behavior changes and regressions, especially drag, resize, grid-placement, and signal-driven state. Use Vitest timers for deferred behavior and notify zoneless test hosts with `markForCheck()` after directly changing plain fields. No minimum coverage threshold is configured, so reviewers expect meaningful assertions rather than coverage-only tests.
 
 ## Commit & Pull Request Guidelines
 

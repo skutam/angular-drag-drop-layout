@@ -39,6 +39,7 @@ import {getScrollOffset} from '../util';
 
 @Component({
   selector: 'ddl-grid',
+  standalone: false,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './grid.component.html',
   styleUrl: './grid.component.css',
@@ -111,7 +112,7 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
       }
       this.registry.register(this);
       this.registeredId = id;
-    }, {allowSignalWrites: true});
+    });
 
     effect(() => {
       const items = this.items();
@@ -120,7 +121,7 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
       const priority = this.movePriority();
       const allowRowGrowth = this.allowRowGrowth();
       untracked(() => this.acceptExternalLayout(items, rows, columns, priority, allowRowGrowth));
-    }, {allowSignalWrites: true});
+    });
   }
 
   public get interactionGridId(): string {

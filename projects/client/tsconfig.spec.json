@@ -9,10 +9,11 @@
       "@skutam/drag-drop-layout": ["projects/drag-drop-layout/src/public-api.ts"]
     },
     "types": [
-      "jasmine"
+      "vitest/globals"
     ]
   },
   "include": [
+    "../../tests/unit/*.ts",
     "src/**/*.spec.ts",
     "src/**/*.d.ts"
   ]

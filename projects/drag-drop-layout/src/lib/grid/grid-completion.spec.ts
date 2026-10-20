@@ -1,6 +1,6 @@
-import {CommonModule} from '@angular/common';
+import {describe, it, expect, beforeEach, vi} from 'vitest';
 import {Component, ViewChild} from '@angular/core';
-import {fakeAsync, TestBed, tick} from '@angular/core/testing';
+import {TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {DragItemDirective} from '../directives/drag-item.directive';
 import {DragDropLayoutModule} from '../drag-drop-layout.module';
@@ -12,14 +12,17 @@ import {GridService} from '../services/grid.service';
 import {GridComponent} from './grid.component';
 
 @Component({
-  standalone: true,
-  imports: [CommonModule, DragDropLayoutModule],
+  imports: [DragDropLayoutModule],
   template: `
     <ddl-grid #gridA gridId="a" [connectedTo]="['b']" [columns]="2" [(rows)]="rowsA" [(items)]="itemsA">
-      <ddl-item *ngFor="let item of itemsA; trackBy: trackItem" [itemId]="item.id" [resizeTypes]="['bottom']" />
+      @for (item of itemsA; track trackItem($index, item)) {
+        <ddl-item [itemId]="item.id" [resizeTypes]="['bottom']" />
+      }
     </ddl-grid>
     <ddl-grid #gridB gridId="b" [columns]="2" [(rows)]="rowsB" [(items)]="itemsB">
-      <ddl-item *ngFor="let item of itemsB; trackBy: trackItem" [itemId]="item.id" />
+      @for (item of itemsB; track trackItem($index, item)) {
+        <ddl-item [itemId]="item.id" />
+      }
     </ddl-grid>
     <div ddlDragItems [targets]="['a']">
       <button ddlDragItem>Add item</button>
@@ -38,6 +41,11 @@ class CompletionHostComponent {
     return item.id;
   }
 }
+
+// Keep browser scheduling real; control only the timers used by pointer auditing and deferred outputs.
+beforeEach(() => {
+  vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'queueMicrotask']});
+});
 
 describe('Grid interaction completion callbacks', () => {
   const geometry: GridGeometrySnapshot = {
@@ -63,30 +71,30 @@ describe('Grid interaction completion callbacks', () => {
     {operation: 'insert', callback: 'end'},
     {operation: 'insert', callback: 'placement'},
   ] as const) {
-    it(`preserves a new drag started by ${scenario.operation} ${scenario.callback}`, fakeAsync(() => {
+    it(`preserves a new drag started by ${scenario.operation} ${scenario.callback}`, () => {
       const fixture = TestBed.createComponent(CompletionHostComponent);
       fixture.detectChanges();
-      tick();
+      vi.advanceTimersByTime(0);
       const host = fixture.componentInstance;
       for (const [grid, left] of [[host.gridA, 0], [host.gridB, 300]] as const) {
-        spyOn(grid.grid.nativeElement, 'getBoundingClientRect').and.returnValue(new DOMRect(left, 0, 210, 110));
-        spyOn(grid, 'captureGeometry').and.returnValue({...geometry, viewportLeft: left});
+        vi.spyOn(grid.grid.nativeElement, 'getBoundingClientRect').mockReturnValue(new DOMRect(left, 0, 210, 110));
+        vi.spyOn(grid, 'captureGeometry').mockReturnValue({...geometry, viewportLeft: left});
       }
       const components = fixture.debugElement.queryAll(By.directive(ItemComponent));
       const first: ItemComponent = components[0].componentInstance;
       const next: ItemComponent = components[1].componentInstance;
       const palette = fixture.debugElement.query(By.directive(DragItemDirective));
       const paletteDirective = palette.injector.get(DragItemDirective);
-      const hide = spyOn(TestBed.inject(PlaceholderRenderer), 'hide').and.callThrough();
+      const hide = vi.spyOn(TestBed.inject(PlaceholderRenderer), 'hide');
       const service = TestBed.inject(GridService);
-      const ended = jasmine.createSpy('pointerEnd');
+      const ended = vi.fn();
       service.pointerEnd$.subscribe(ended);
-      const nextMoved = jasmine.createSpy('nextMoved');
-      const nextEnded = jasmine.createSpy('nextEnded');
+      const nextMoved = vi.fn();
+      const nextEnded = vi.fn();
       next.dragMove.subscribe(nextMoved);
       next.dragEnd.subscribe(nextEnded);
-      const committed = jasmine.createSpy('committed');
-      const rejected = jasmine.createSpy('rejected');
+      const committed = vi.fn();
+      const rejected = vi.fn();
       for (const grid of [host.gridA, host.gridB]) {
         grid.placementCommitted.subscribe(committed);
         grid.placementRejected.subscribe(rejected);
@@ -101,9 +109,9 @@ describe('Grid interaction completion callbacks', () => {
         if (scenario.operation === 'transfer') {
           expect(host.itemsA).toEqual([]);
           expect(host.itemsB.find((item) => item.id === 'first'))
-            .toEqual(jasmine.objectContaining({x: 2, y: 2}));
+            .toEqual(expect.objectContaining({x: 2, y: 2}));
         } else if (scenario.operation === 'outside') {
-          expect(host.itemsA[0]).toEqual(jasmine.objectContaining({x: 1, y: 1}));
+          expect(host.itemsA[0]).toEqual(expect.objectContaining({x: 1, y: 1}));
           expect(first.element.style.visibility).toBe('');
           expect(first.x()).toBe(1);
         } else if (scenario.operation === 'resize') {
@@ -139,46 +147,47 @@ describe('Grid interaction completion callbacks', () => {
         : scenario.operation === 'resize' ? 20 : 120;
       const y = scenario.operation === 'resize' || scenario.operation === 'transfer' ? 80 : 20;
       document.dispatchEvent(pointer('pointermove', 11, x, y));
-      tick(10);
+      vi.advanceTimersByTime(10);
       // Keep a move pending when the first pointer is released.
       document.dispatchEvent(pointer('pointermove', 11, x, y));
       document.dispatchEvent(pointer('pointerup', 11, x, y));
       fixture.detectChanges();
-      tick(10);
+      vi.advanceTimersByTime(10);
 
       expect(order).toEqual(['end', 'placement']);
-      expect(started).toBeTrue();
+      expect(started).toBe(true);
       expect(ended).toHaveBeenCalledTimes(1);
       expect(nextEnded).not.toHaveBeenCalled();
       expect(nextMoved).not.toHaveBeenCalled();
       expect(hide).toHaveBeenCalledTimes(1);
       document.dispatchEvent(pointer('pointermove', 11, 20, 80));
-      tick(10);
+      vi.advanceTimersByTime(10);
       document.dispatchEvent(pointer('pointerup', 11, 20, 80));
       document.dispatchEvent(pointer('pointercancel', 11, 20, 80));
       expect(nextMoved).not.toHaveBeenCalled();
       expect(ended).toHaveBeenCalledTimes(1);
 
       document.dispatchEvent(pointer('pointermove', 22, 420, 20));
-      tick(10);
+      vi.advanceTimersByTime(10);
       expect(nextMoved).toHaveBeenCalledTimes(1);
       document.dispatchEvent(pointer('pointerup', 22, 420, 20));
       fixture.detectChanges();
-      tick();
+      vi.advanceTimersByTime(0);
       expect(nextEnded).toHaveBeenCalledTimes(1);
       expect(ended).toHaveBeenCalledTimes(2);
       expect(hide).toHaveBeenCalledTimes(2);
       expect(host.itemsB.find((item) => item.id === 'next')?.x).toBe(2);
       expect(committed).toHaveBeenCalledTimes(scenario.operation === 'outside' ? 1 : 2);
-      expect(committed.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
-        operation: 'move', item: jasmine.objectContaining({id: 'next', x: 2}),
+      expect(committed.mock.lastCall![0]).toEqual(expect.objectContaining({
+        operation: 'move', item: expect.objectContaining({id: 'next', x: 2}),
       }));
       if (scenario.operation === 'outside') {
-        expect(rejected).toHaveBeenCalledOnceWith(jasmine.objectContaining({reason: 'outside-grid'}));
+        expect(rejected).toHaveBeenCalledTimes(1);
+        expect(rejected).toHaveBeenCalledWith(expect.objectContaining({reason: 'outside-grid'}));
       } else {
         expect(rejected).not.toHaveBeenCalled();
       }
-    }));
+    });
   }
 });
 

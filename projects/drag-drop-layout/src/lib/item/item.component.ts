@@ -24,6 +24,7 @@ import {GridItem, ItemDragEvent, ItemResizeEvent, ResizeType} from './item.defin
 
 @Component({
   selector: 'ddl-item',
+  standalone: false,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './item.component.html',
   styleUrl: './item.component.css',

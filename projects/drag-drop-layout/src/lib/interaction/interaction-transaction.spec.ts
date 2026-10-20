@@ -1,4 +1,5 @@
-import {fakeAsync, TestBed, tick} from '@angular/core/testing';
+import {describe, it, expect, beforeEach, vi} from 'vitest';
+import {TestBed} from '@angular/core/testing';
 import {GridGeometrySnapshot} from '../geometry/grid-geometry';
 import {GridItem} from '../item/item.definitions';
 import {LayoutSnapshot, PlacementCommittedEvent, PlacementRejectedEvent} from '../layout/layout.definitions';
@@ -6,6 +7,11 @@ import {GridRegistry} from '../services/grid-registry.service';
 import {PlaceholderRenderer} from '../placeholder';
 import {GridService} from '../services/grid.service';
 import {GridInteractionAdapter, InteractionPreview, InteractionSession} from './interaction.definitions';
+
+// Keep browser scheduling real; control only the timers used by pointer auditing and deferred outputs.
+beforeEach(() => {
+  vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'queueMicrotask']});
+});
 
 describe('interaction transaction', () => {
   let registry: GridRegistry;
@@ -18,38 +24,38 @@ describe('interaction transaction', () => {
     registry = TestBed.inject(GridRegistry);
     service = TestBed.inject(GridService);
     element = document.createElement('div');
-    spyOn(element, 'getBoundingClientRect').and.returnValue(rect(0, 0, 50, 50));
+    vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 50, 50));
   });
 
-  it('rolls back pointer cancellation without committing or calculating another preview', fakeAsync(() => {
+  it('rolls back pointer cancellation without committing or calculating another preview', () => {
     const order: string[] = [];
     const grid = new FakeGrid('grid', [], () => true, order);
     registry.register(grid);
-    const ended = jasmine.createSpy('ended');
+    const ended = vi.fn();
     service.pointerEnd$.subscribe(ended);
     service.startResize(grid, active, element, pointer('pointerdown', 4, 0), 'bottom', null);
     document.dispatchEvent(pointer('pointermove', 4, 50));
-    tick(10);
+    vi.advanceTimersByTime(10);
     const previewCount = grid.previewCount;
     document.dispatchEvent(pointer('pointercancel', 4, 50));
-    tick();
+    vi.advanceTimersByTime(0);
 
     expect(order).toEqual([]);
     expect(grid.previewCount).toBe(previewCount);
     expect(grid.clearCount).toBe(1);
     expect(grid.rejected?.reason).toBe('cancelled');
     expect(ended).toHaveBeenCalledTimes(1);
-  }));
+  });
 
   for (const operation of ['move', 'transfer', 'insert'] as const) {
-    it(`restores a cancelled ${operation} and stops pending movement`, fakeAsync(() => {
+    it(`restores a cancelled ${operation} and stops pending movement`, () => {
       const order: string[] = [];
       const source = new FakeGrid('source', ['target'], () => operation === 'move', order);
       const target = operation === 'move' ? source : new FakeGrid('target', [], () => true, order);
       if (operation !== 'insert') registry.register(source);
       if (target !== source) registry.register(target);
-      const hide = spyOn(TestBed.inject(PlaceholderRenderer), 'hide').and.callThrough();
-      const ended = jasmine.createSpy('ended');
+      const hide = vi.spyOn(TestBed.inject(PlaceholderRenderer), 'hide');
+      const ended = vi.fn();
       service.pointerEnd$.subscribe(ended);
       if (operation === 'insert') {
         service.startPaletteDrag(active, element, pointer('pointerdown', 5, 0), ['target'], null);
@@ -57,38 +63,38 @@ describe('interaction transaction', () => {
         service.startGridDrag(source, active, element, pointer('pointerdown', 5, 0), {x: 0, y: 0}, null);
       }
       document.dispatchEvent(pointer('pointermove', 5, 150));
-      tick(10);
+      vi.advanceTimersByTime(10);
       const previewCount = target.previewCount;
       // Cancel while another audited pointer move is still pending.
       document.dispatchEvent(pointer('pointermove', 5, 170));
       document.dispatchEvent(pointer('pointercancel', 5, 170));
       document.dispatchEvent(pointer('pointerup', 5, 170));
       document.dispatchEvent(pointer('pointercancel', 5, 170));
-      tick(20);
+      vi.advanceTimersByTime(20);
 
       expect(order).toEqual([]);
       expect(target.previewCount).toBe(previewCount);
       expect(target.clearCount).toBe(1);
       if (operation === 'transfer') expect(source.clearCount).toBe(1);
       expect(target.rejections.length).toBe(1);
-      expect(target.rejected).toEqual(jasmine.objectContaining({reason: 'cancelled', operation}));
+      expect(target.rejected).toEqual(expect.objectContaining({reason: 'cancelled', operation}));
       expect(ended).toHaveBeenCalledTimes(1);
       expect(hide).toHaveBeenCalledTimes(1);
-    }));
+    });
   }
 
-  it('ends a cancelled palette candidate even when it never entered a grid', fakeAsync(() => {
-    const ended = jasmine.createSpy('ended');
+  it('ends a cancelled palette candidate even when it never entered a grid', () => {
+    const ended = vi.fn();
     service.pointerEnd$.subscribe(ended);
-    const hide = spyOn(TestBed.inject(PlaceholderRenderer), 'hide').and.callThrough();
+    const hide = vi.spyOn(TestBed.inject(PlaceholderRenderer), 'hide');
     service.startPaletteDrag(active, element, pointer('pointerdown', 6, 0), [], null);
     document.dispatchEvent(pointer('pointercancel', 6, 0));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(ended).toHaveBeenCalledTimes(1);
     expect(hide).toHaveBeenCalledTimes(1);
-  }));
+  });
 
-  it('ignores cancellation from another pointer and column changes in an unrelated grid', fakeAsync(() => {
+  it('ignores cancellation from another pointer and column changes in an unrelated grid', () => {
     const order: string[] = [];
     const grid = new FakeGrid('grid', [], () => true, order);
     registry.register(grid);
@@ -96,16 +102,16 @@ describe('interaction transaction', () => {
     document.dispatchEvent(pointer('pointercancel', 8, 0));
     service.cancelForGrid('unrelated');
     document.dispatchEvent(pointer('pointerup', 7, 50));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(order).toEqual(['grid:commit', 'grid:event']);
     expect(grid.rejected).toBeNull();
-  }));
+  });
 
-  it('ends a superseded interaction before starting the next one', fakeAsync(() => {
+  it('ends a superseded interaction before starting the next one', () => {
     const order: string[] = [];
     const grid = new FakeGrid('grid', [], () => true, order);
     registry.register(grid);
-    const ended = jasmine.createSpy('ended');
+    const ended = vi.fn();
     service.pointerEnd$.subscribe(ended);
     service.startResize(grid, active, element, pointer('pointerdown', 10, 0), 'bottom', null);
     service.startResize(grid, active, element, pointer('pointerdown', 11, 0), 'right', null);
@@ -115,100 +121,100 @@ describe('interaction transaction', () => {
     document.dispatchEvent(pointer('pointerup', 10, 50));
     expect(order).toEqual([]);
     document.dispatchEvent(pointer('pointerup', 11, 50));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(order).toEqual(['grid:commit', 'grid:event']);
     expect(ended).toHaveBeenCalledTimes(2);
-  }));
+  });
 
-  it('commits a transfer destination-first and emits after both models changed', fakeAsync(() => {
+  it('commits a transfer destination-first and emits after both models changed', () => {
     const order: string[] = [];
     const source = new FakeGrid('source', ['destination'], () => false, order);
     const destination = new FakeGrid('destination', [], (pointer) => pointer.x >= 100, order);
     registry.register(source);
     registry.register(destination);
-    spyOn(TestBed.inject(PlaceholderRenderer), 'hide').and.callFake(() => order.push('cleanup'));
+    vi.spyOn(TestBed.inject(PlaceholderRenderer), 'hide').mockImplementation(() => order.push('cleanup'));
     service.pointerEnd$.subscribe(() => order.push('end'));
     service.startGridDrag(source, active, element, pointer('pointerdown', 1, 0), {x: 0, y: 0}, null);
     document.dispatchEvent(pointer('pointermove', 1, 150));
-    tick(10);
+    vi.advanceTimersByTime(10);
     document.dispatchEvent(pointer('pointerup', 1, 150));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(order).toEqual(['destination:commit', 'source:remove', 'cleanup', 'end', 'destination:event']);
-  }));
+  });
 
-  it('restores a rejected preview before cleanup and completion callbacks', fakeAsync(() => {
+  it('restores a rejected preview before cleanup and completion callbacks', () => {
     const order: string[] = [];
     const grid = new FakeGrid('grid', [], () => true, order);
     registry.register(grid);
-    spyOn(grid, 'preview').and.returnValue({result: {ok: false, reason: 'no-space', attemptedItem: active}});
-    spyOn(grid, 'clearPreview').and.callFake(() => order.push('restore'));
-    spyOn(grid, 'notifyPlacementRejected').and.callFake((event) => order.push(event.reason));
-    spyOn(TestBed.inject(PlaceholderRenderer), 'hide').and.callFake(() => order.push('cleanup'));
+    vi.spyOn(grid, 'preview').mockReturnValue({result: {ok: false, reason: 'no-space', attemptedItem: active}});
+    vi.spyOn(grid, 'clearPreview').mockImplementation(() => order.push('restore'));
+    vi.spyOn(grid, 'notifyPlacementRejected').mockImplementation((event) => order.push(event.reason));
+    vi.spyOn(TestBed.inject(PlaceholderRenderer), 'hide').mockImplementation(() => order.push('cleanup'));
     service.pointerEnd$.subscribe(() => order.push('end'));
     service.startResize(grid, active, element, pointer('pointerdown', 20, 0), 'bottom', null);
     document.dispatchEvent(pointer('pointerup', 20, 50));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(order).toEqual(['restore', 'cleanup', 'end', 'no-space']);
-  }));
+  });
 
-  it('restores the source and reports outside-grid when an existing item is dropped outside', fakeAsync(() => {
+  it('restores the source and reports outside-grid when an existing item is dropped outside', () => {
     const order: string[] = [];
     const source = new FakeGrid('source', [], () => false, order);
     registry.register(source);
     service.startGridDrag(source, active, element, pointer('pointerdown', 2, 0), {x: 0, y: 0}, null);
     document.dispatchEvent(pointer('pointermove', 2, 300));
-    tick(10);
+    vi.advanceTimersByTime(10);
     document.dispatchEvent(pointer('pointerup', 2, 300));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(order).not.toContain('source:commit');
     expect(source.rejected?.reason).toBe('outside-grid');
     expect(source.clearCount).toBeGreaterThan(0);
-  }));
+  });
 
-  it('does not enter an unconnected grid', fakeAsync(() => {
+  it('does not enter an unconnected grid', () => {
     const source = new FakeGrid('source', [], () => false, []);
     const unconnected = new FakeGrid('unconnected', [], (pointer) => pointer.x >= 100, []);
     registry.register(source);
     registry.register(unconnected);
     service.startGridDrag(source, active, element, pointer('pointerdown', 3, 0), {x: 0, y: 0}, null);
     document.dispatchEvent(pointer('pointermove', 3, 150));
-    tick(10);
+    vi.advanceTimersByTime(10);
     document.dispatchEvent(pointer('pointerup', 3, 150));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(unconnected.previewCount).toBe(0);
     expect(source.rejected?.reason).toBe('not-connected');
-  }));
+  });
 
   for (const completion of ['pointermove', 'pointerup']) {
-    it(`stops processing ${completion} when a move callback cancels the session`, fakeAsync(() => {
+    it(`stops processing ${completion} when a move callback cancels the session`, () => {
       const order: string[] = [];
       const grid = new FakeGrid('grid', [], () => true, order);
       registry.register(grid);
-      const ended = jasmine.createSpy('ended');
+      const ended = vi.fn();
       service.pointerEnd$.subscribe(ended);
       service.pointerMove$.subscribe(() => service.cancelForGrid('grid'));
       service.startResize(grid, active, element, pointer('pointerdown', 50, 0), 'bottom', null);
       document.dispatchEvent(pointer(completion, 50, 50));
-      tick(10);
+      vi.advanceTimersByTime(10);
       expect(grid.previewCount).toBe(0);
       expect(order).toEqual([]);
       expect(ended).toHaveBeenCalledTimes(1);
       expect(grid.rejected?.reason).toBe('cancelled');
-    }));
+    });
   }
 
-  it('keeps the active pointer move when another pointer moves in the same audit window', fakeAsync(() => {
+  it('keeps the active pointer move when another pointer moves in the same audit window', () => {
     const grid = new FakeGrid('grid', [], () => true, []);
     registry.register(grid);
     service.startResize(grid, active, element, pointer('pointerdown', 60, 0), 'bottom', null);
     document.dispatchEvent(pointer('pointermove', 60, 50));
     document.dispatchEvent(pointer('pointermove', 61, 150));
-    tick(10);
+    vi.advanceTimersByTime(10);
     expect(grid.previewCount).toBe(1);
     document.dispatchEvent(pointer('pointercancel', 60, 50));
-  }));
+  });
 
-  it('leaves a replacement session active when it starts during the previous release', fakeAsync(() => {
+  it('leaves a replacement session active when it starts during the previous release', () => {
     const order: string[] = [];
     const grid = new FakeGrid('grid', [], () => true, order);
     registry.register(grid);
@@ -220,27 +226,27 @@ describe('interaction transaction', () => {
     });
     service.startResize(grid, active, element, pointer('pointerdown', 70, 0), 'bottom', null);
     document.dispatchEvent(pointer('pointerup', 70, 50));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(order).toEqual([]);
     expect(grid.previewCount).toBe(0);
     document.dispatchEvent(pointer('pointerup', 71, 50));
-    tick();
+    vi.advanceTimersByTime(0);
     expect(order).toEqual(['grid:commit', 'grid:event']);
-  }));
+  });
 
-  it('reports transfer when the destination rejects an existing item', fakeAsync(() => {
+  it('reports transfer when the destination rejects an existing item', () => {
     const source = new FakeGrid('source', ['target'], () => false, []);
     const target = new FakeGrid('target', [], () => true, []);
     registry.register(source);
     registry.register(target);
-    spyOn(target, 'preview').and.returnValue({result: {ok: false, reason: 'no-space', attemptedItem: active}});
+    vi.spyOn(target, 'preview').mockReturnValue({result: {ok: false, reason: 'no-space', attemptedItem: active}});
     service.startGridDrag(source, active, element, pointer('pointerdown', 80, 0), {x: 0, y: 0}, null);
     document.dispatchEvent(pointer('pointerup', 80, 150));
-    tick();
-    expect(target.rejected).toEqual(jasmine.objectContaining({operation: 'transfer', reason: 'no-space'}));
+    vi.advanceTimersByTime(0);
+    expect(target.rejected).toEqual(expect.objectContaining({operation: 'transfer', reason: 'no-space'}));
     expect(source.clearCount).toBe(1);
     expect(target.clearCount).toBe(1);
-  }));
+  });
 });
 
 class FakeGrid implements GridInteractionAdapter {

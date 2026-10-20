@@ -15,11 +15,68 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: '.node-version'
           cache: npm
       - run: npm ci
-      - run: npm run verify
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:demo
+      - run: npm run build:client:github-pages
+      - run: npm run test:demo
+        env:
+          DEMO_BASE: /angular-drag-drop-layout/
       - name: Verify synchronized documentation
         run: cmp README.md projects/drag-drop-layout/README.md
       - name: Inspect publishable package
         run: npm pack ./dist/drag-drop-layout --dry-run
+
+      - run: npm run test:compatibility -- --pack-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: library-package
+          path: dist/library.tgz
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-failures
+          path: |
+            dist/demo-results
+            dist/test-out/**/__screenshots__/**
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+          cache: npm
+      - run: npm ci
+      - run: npm run audit:security
+
+  compatibility:
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        angular: ['20', '21', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: library-package
+          path: dist
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:compatibility -- --angular=${{ matrix.angular }} --use-packed
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: compatibility-failure-${{ matrix.angular }}
+          path: dist/compatibility/results
