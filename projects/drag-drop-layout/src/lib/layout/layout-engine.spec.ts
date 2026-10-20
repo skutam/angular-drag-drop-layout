@@ -1,3 +1,4 @@
+import {describe, it, expect} from 'vitest';
 import {GridItem} from '../item/item.definitions';
 import {LayoutEngine, overlaps, validPriority} from './layout-engine';
 import {MoveDirection, PlacementRequest} from './layout.definitions';
@@ -26,7 +27,7 @@ describe('LayoutEngine', () => {
       [item('active', 2, 2), item('blocker', 2, 2)],
       item('active', 2, 2),
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.items.find((entry) => entry.id === 'active')).toEqual(item('active', 2, 2));
     expect(result.items.find((entry) => entry.id === 'blocker')).toEqual(item('blocker', 2, 1));
@@ -38,7 +39,7 @@ describe('LayoutEngine', () => {
       item('active', 1, 1),
       {movePriority: ['left', 'right', 'bottom']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.items.find((entry) => entry.id === 'blocker')?.x).toBe(2);
   });
 
@@ -48,7 +49,7 @@ describe('LayoutEngine', () => {
       item('active', 1, 1, 2),
       {movePriority: ['right']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.items.find((entry) => entry.id === 'blocker')?.x).toBe(3);
   });
 
@@ -58,7 +59,7 @@ describe('LayoutEngine', () => {
       item('active', 1, 1),
       {movePriority: ['right']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.items.map((entry) => `${entry.id}:${entry.x}`)).toEqual(['active:1', 'first:2', 'second:3']);
   });
@@ -69,7 +70,7 @@ describe('LayoutEngine', () => {
       item('active', 2, 2),
       {movePriority: ['top', 'left', 'right'], columns: 4, rows: 3},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.items.find((entry) => entry.id === 'blocker')?.x).toBe(1);
   });
 
@@ -81,7 +82,7 @@ describe('LayoutEngine', () => {
       movePriority: ['top', 'left', 'right'],
       allowRowGrowth: false,
     }));
-    expect(result).toEqual(jasmine.objectContaining({ok: false, reason: 'no-space'}));
+    expect(result).toEqual(expect.objectContaining({ok: false, reason: 'no-space'}));
     expect(original).toEqual([item('active', 1, 1), item('blocker', 1, 1)]);
   });
 
@@ -96,8 +97,8 @@ describe('LayoutEngine', () => {
       item('active', 1, 1),
       {columns: 1, rows: 1, movePriority: ['bottom'], allowRowGrowth: false},
     ));
-    expect(withoutBottom.ok).toBeFalse();
-    expect(disabled.ok).toBeFalse();
+    expect(withoutBottom.ok).toBe(false);
+    expect(disabled.ok).toBe(false);
   });
 
   it('adds only the rows required by a bottom displacement', () => {
@@ -106,7 +107,7 @@ describe('LayoutEngine', () => {
       item('active', 1, 2),
       {columns: 1, rows: 3, movePriority: ['bottom']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.rows).toBe(4);
   });
 
@@ -121,7 +122,7 @@ describe('LayoutEngine', () => {
         movePriority: ['bottom'],
       },
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.rows).toBe(4);
     expect(result.items.find((entry) => entry.id === 'new')?.y).toBe(2);
@@ -134,7 +135,7 @@ describe('LayoutEngine', () => {
       item('new', 1, 2),
       {columns: 1, rows: 4, operation: 'insert'},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.rows).toBe(5);
     expect(result.items.map((entry) => `${entry.id}:${entry.y}`))
@@ -147,7 +148,7 @@ describe('LayoutEngine', () => {
       item('new', 1, 2),
       {columns: 1, rows: 5, operation: 'move'},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.rows).toBe(6);
     expect(result.items.find((entry) => entry.id === 'new')?.y).toBe(2);
@@ -157,7 +158,7 @@ describe('LayoutEngine', () => {
 
   it('does not automatically remove existing rows', () => {
     const result = engine.resolvePlacement(request([], item('active', 1, 1), {rows: 8}));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.rows).toBe(8);
   });
 
@@ -167,7 +168,7 @@ describe('LayoutEngine', () => {
       rows: 2,
       items: [item('first', 1, 1), item('later', 1, 1)],
     }, ['right', 'bottom'], true);
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.items.find((entry) => entry.id === 'later')).toEqual(item('later', 1, 1));
     expect(result.items.find((entry) => entry.id === 'first')?.x).toBe(2);
@@ -180,27 +181,27 @@ describe('LayoutEngine', () => {
       items: [item('same', 1, 1), item('same', 2, 1)],
     }, ['bottom'], true);
     const invalid = engine.resolvePlacement(request([], item('bad', 0, 1)));
-    expect(duplicate).toEqual(jasmine.objectContaining({ok: false, reason: 'duplicate-item-id'}));
-    expect(invalid).toEqual(jasmine.objectContaining({ok: false, reason: 'invalid-item'}));
+    expect(duplicate).toEqual(expect.objectContaining({ok: false, reason: 'duplicate-item-id'}));
+    expect(invalid).toEqual(expect.objectContaining({ok: false, reason: 'invalid-item'}));
   });
 
   it('validates direction lists as non-empty and duplicate-free', () => {
-    expect(validPriority([])).toBeFalse();
-    expect(validPriority(['top', 'top'])).toBeFalse();
-    expect(validPriority(['top', 'bottom'])).toBeTrue();
-    expect(validPriority(['sideways'] as unknown as MoveDirection[])).toBeFalse();
+    expect(validPriority([])).toBe(false);
+    expect(validPriority(['top', 'top'])).toBe(false);
+    expect(validPriority(['top', 'bottom'])).toBe(true);
+    expect(validPriority(['sideways'] as unknown as MoveDirection[])).toBe(false);
   });
 
   it('uses inclusive grid rectangles for overlap checks', () => {
-    expect(overlaps(item('a', 1, 1), item('b', 2, 1))).toBeFalse();
-    expect(overlaps(item('a', 1, 1, 2), item('b', 2, 1))).toBeTrue();
+    expect(overlaps(item('a', 1, 1), item('b', 2, 1))).toBe(false);
+    expect(overlaps(item('a', 1, 1, 2), item('b', 2, 1))).toBe(true);
   });
 
   it('rejects duplicate active IDs instead of returning repeated copies of the proposal', () => {
     const result = engine.resolvePlacement(request(
       [item('active', 1, 1), item('active', 2, 1)], item('active', 3, 1),
     ));
-    expect(result).toEqual(jasmine.objectContaining({ok: false, reason: 'duplicate-item-id'}));
+    expect(result).toEqual(expect.objectContaining({ok: false, reason: 'duplicate-item-id'}));
   });
 
   it('prefers one longer displacement over a shorter cascade', () => {
@@ -208,7 +209,7 @@ describe('LayoutEngine', () => {
       [item('blocker', 2, 2), item('above', 2, 1)], item('new', 2, 2, 2),
       {movePriority: ['top', 'right']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.items.find((entry) => entry.id === 'blocker')).toEqual(item('blocker', 4, 2));
     expect(result.items.find((entry) => entry.id === 'above')).toEqual(item('above', 2, 1));
@@ -218,7 +219,7 @@ describe('LayoutEngine', () => {
     const result = engine.resolvePlacement(request(
       [item('blocker', 2, 3)], item('new', 2, 2, 1, 2), {movePriority: ['top', 'right']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.items.find((entry) => entry.id === 'blocker')).toEqual(item('blocker', 3, 3));
   });
 
@@ -227,7 +228,7 @@ describe('LayoutEngine', () => {
       [item('blocker', 2, 1), item('neighbor', 3, 1)], item('new', 2, 1),
       {rows: 1, movePriority: ['bottom', 'right']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.rows).toBe(1);
     expect(result.items.map((entry) => entry.x)).toEqual([3, 4, 2]);
@@ -238,20 +239,20 @@ describe('LayoutEngine', () => {
       item('a', 1, 3, 2), item('b', 3, 3, 2, 2), item('c', 2, 1),
       item('d', 4, 1, 1, 2), item('e', 1, 2), item('f', 3, 1, 1, 2), item('g', 1, 4),
     ], item('new', 2, 2, 2, 2), {movePriority: ['bottom', 'left', 'right', 'top']}));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     // The first downward cascade needs seven rows; another fits in five.
     expect(result.rows).toBe(5);
     expect(result.items.find((entry) => entry.id === 'new')).toEqual(item('new', 2, 2, 2, 2));
     expect(result.items.every((entry, index) => result.items.slice(index + 1).every((other) => !overlaps(entry, other))))
-      .toBeTrue();
+      .toBe(true);
   });
 
   it('returns the best complete result already found when the budget ends', () => {
     const result = new LayoutEngine(1).resolvePlacement(request(
       [item('blocker', 2, 2)], item('new', 2, 2), {movePriority: ['right', 'bottom']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.items[0]).toEqual(item('blocker', 3, 2));
   });
 
@@ -260,9 +261,9 @@ describe('LayoutEngine', () => {
       columns: 2, rows: 2, allowRowGrowth: false, movePriority: ['top', 'left'],
     });
     expect(new LayoutEngine(1).resolvePlacement(input))
-      .toEqual(jasmine.objectContaining({ok: false, reason: 'search-limit'}));
+      .toEqual(expect.objectContaining({ok: false, reason: 'search-limit'}));
     expect(new LayoutEngine(4).resolvePlacement(input))
-      .toEqual(jasmine.objectContaining({ok: false, reason: 'no-space'}));
+      .toEqual(expect.objectContaining({ok: false, reason: 'no-space'}));
   });
 
   it('gives growth a separate budget when the existing-row search is truncated', () => {
@@ -270,7 +271,7 @@ describe('LayoutEngine', () => {
       [item('blocker', 1, 1)], item('new', 1, 1),
       {rows: 1, columns: 2, movePriority: ['bottom', 'right']},
     ));
-    expect(result.ok).toBeTrue();
+    expect(result.ok).toBe(true);
     if (result.ok) expect(result.rows).toBe(2);
   });
 

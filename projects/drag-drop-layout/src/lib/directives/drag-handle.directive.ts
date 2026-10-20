@@ -2,6 +2,7 @@ import {Directive, HostListener, input, output} from '@angular/core';
 
 @Directive({
   selector: '[ddlDragHandle]',
+  standalone: false,
   host: {
     '[draggable]': 'draggable() && !disabled()',
     '[attr.disabled]': 'disabled() ? true : null',

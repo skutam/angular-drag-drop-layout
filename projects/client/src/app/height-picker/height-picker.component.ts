@@ -1,16 +1,13 @@
 import {Component, effect, output, signal} from '@angular/core';
-import {NgForOf} from "@angular/common";
 import {HeightProp, HeightUnit} from "../../../../drag-drop-layout/src/lib/definitions";
 import {FormsModule} from "@angular/forms";
 import {HeightPropPickerComponent} from "../height-prop-picker/height-prop-picker.component";
 
 @Component({
   selector: 'app-height-picker',
-  standalone: true,
   imports: [
-    NgForOf,
     FormsModule,
-    HeightPropPickerComponent,
+    HeightPropPickerComponent
   ],
   templateUrl: './height-picker.component.html',
   styleUrl: './height-picker.component.less'

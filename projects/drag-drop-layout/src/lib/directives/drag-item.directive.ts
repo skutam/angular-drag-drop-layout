@@ -14,6 +14,7 @@ export interface DragItemDragEvent {
 
 @Directive({
   selector: '[ddlDragItem]',
+  standalone: false,
   host: {
     '[draggable]': 'draggable() && !disabled()',
     '[attr.disabled]': 'disabled() ? true : null',

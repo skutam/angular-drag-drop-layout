@@ -1,3 +1,4 @@
+import {describe, it, expect} from 'vitest';
 import {GridItem} from '../item/item.definitions';
 import {InsertionOptions, LayoutSnapshot} from './layout.definitions';
 import {prepareInsertion} from './insertion';
@@ -46,22 +47,22 @@ describe('palette insertion sizing', () => {
     const narrow = {...snapshot, items: [], columns: 4};
     expect(prepareInsertion(narrow, preferred, 3, 1)).toEqual({ok: true, item: {...preferred, width: 4}});
     expect(prepareInsertion(narrow, preferred, 3, 1, {sizing: 'fit-width', minWidth: 5}))
-      .toEqual(jasmine.objectContaining({ok: false, reason: 'out-of-bounds'}));
+      .toEqual(expect.objectContaining({ok: false, reason: 'out-of-bounds'}));
   });
 
   it('preserves fixed dimensions and rejects a fixed widget wider than the destination', () => {
     const fixed: InsertionOptions = {sizing: 'fixed', minWidth: 1};
     expect(prepareInsertion(snapshot, preferred, 9, 1, fixed)).toEqual({ok: true, item: preferred});
     expect(prepareInsertion({...snapshot, columns: 6}, preferred, 3, 1, fixed))
-      .toEqual(jasmine.objectContaining({ok: false, reason: 'out-of-bounds'}));
+      .toEqual(expect.objectContaining({ok: false, reason: 'out-of-bounds'}));
   });
 
   it('rejects malformed insertion settings and dimensions', () => {
     for (const minWidth of [0, -1, 1.5, 13, NaN]) {
       expect(prepareInsertion(snapshot, preferred, 7, 1, {sizing: 'fit-width', minWidth}))
-        .toEqual(jasmine.objectContaining({ok: false, reason: 'invalid-config'}));
+        .toEqual(expect.objectContaining({ok: false, reason: 'invalid-config'}));
     }
     expect(prepareInsertion(snapshot, {...preferred, height: 0}, 7, 1))
-      .toEqual(jasmine.objectContaining({ok: false, reason: 'invalid-item'}));
+      .toEqual(expect.objectContaining({ok: false, reason: 'invalid-item'}));
   });
 });

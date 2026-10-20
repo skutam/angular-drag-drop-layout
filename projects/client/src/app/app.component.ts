@@ -1,5 +1,4 @@
 import {Component} from '@angular/core';
-import {CommonModule} from '@angular/common';
 import {
   createGridItem,
   DragDropLayoutModule,
@@ -7,7 +6,6 @@ import {
   HeightProp,
   HeightUnit,
   InsertionSizing,
-  itemTrackBy,
   MoveDirection,
   PlacementCommittedEvent,
   PlacementRejectedEvent,
@@ -19,8 +17,7 @@ import {HeightPropPickerComponent} from './height-prop-picker/height-prop-picker
 
 @Component({
   selector: 'app-root',
-  standalone: true,
-  imports: [CommonModule, FormsModule, DragDropLayoutModule, HeightPickerComponent, HeightPropPickerComponent],
+  imports: [FormsModule, DragDropLayoutModule, HeightPickerComponent, HeightPropPickerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.less'
 })
@@ -174,7 +171,6 @@ export class AppComponent {
     }
   }
 
-  protected readonly itemTrackBy = itemTrackBy;
   protected readonly RESIZE_TYPES: ResizeType[] = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
   protected readonly document = document;
 }

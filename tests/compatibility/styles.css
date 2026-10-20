@@ -1,0 +1,5 @@
+body { margin: 20px; font-family: sans-serif; min-height: 1600px; }
+ddl-grid { width: 400px; margin-top: 30px; background: #ddd; }
+ddl-item { background: #bde; outline: 1px solid #456; }
+ddl-item button { margin: 25px 5px 0; }
+pre { white-space: pre-wrap; }

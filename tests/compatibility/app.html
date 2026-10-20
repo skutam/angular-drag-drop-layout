@@ -1,0 +1,31 @@
+<button id="replace" (click)="replace()">External update</button>
+<button id="fill" (click)="fill()">Fill grid</button>
+<div ddlDragItems [targets]="['a', 'b']">
+  <button id="palette" ddlDragItem [width]="1" [height]="1" [scrollableElement]="document">Insert</button>
+</div>
+<ddl-grid id="a" gridId="a" [connectedTo]="['b']" [columns]="4"
+  [(items)]="itemsA" [(rows)]="rowsA" [allowRowGrowth]="growth()"
+  [gridHeight]="'160px'" [colGap]="'0px'" [rowGap]="'0px'" [scrollableElement]="document"
+  (itemsChange)="record('items:a')" (rowsChange)="record('rows:a')"
+  (placementCommitted)="committed($event)" (placementRejected)="rejected($event)">
+  @for (item of itemsA(); track item.id) {
+    <ddl-item [attr.data-id]="item.id" [itemId]="item.id" [resizeTypes]="['right']">
+      <button ddlDragHandle>Move</button>
+      <span>{{item.x}},{{item.y}}:{{item.width}},{{item.height}}</span>
+    </ddl-item>
+  }
+</ddl-grid>
+<ddl-grid id="b" gridId="b" [connectedTo]="['a']" [columns]="4"
+  [(items)]="itemsB" [(rows)]="rowsB" [gridHeight]="'160px'"
+  [colGap]="'0px'" [rowGap]="'0px'" [scrollableElement]="document"
+  (itemsChange)="record('items:b')" (rowsChange)="record('rows:b')"
+  (placementCommitted)="committed($event)" (placementRejected)="rejected($event)">
+  @for (item of itemsB(); track item.id) {
+    <ddl-item [attr.data-id]="item.id" [itemId]="item.id" [resizeTypes]="['right']">
+      <button ddlDragHandle>Move</button>
+      <span>{{item.x}},{{item.y}}:{{item.width}},{{item.height}}</span>
+    </ddl-item>
+  }
+</ddl-grid>
+<pre id="state">{{{a: itemsA(), b: itemsB(), rowsA: rowsA(), rowsB: rowsB()} | json}}</pre>
+<pre id="events">{{events() | json}}</pre>

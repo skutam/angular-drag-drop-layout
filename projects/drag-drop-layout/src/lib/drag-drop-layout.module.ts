@@ -4,13 +4,9 @@ import {ItemComponent} from "./item/item.component";
 import {DragHandleDirective} from "./directives/drag-handle.directive";
 import {DragItemDirective} from "./directives/drag-item.directive";
 import {DragItemsDirective} from "./directives/drag-items.directive";
-import {CommonModule} from "@angular/common";
 
 
 @NgModule({
-  imports: [
-    CommonModule,
-  ],
   declarations: [
     GridComponent,
     ItemComponent,

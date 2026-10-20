@@ -6,7 +6,7 @@ on:
       release-type:
         type: choice
         required: true
-        default: patch
+        default: major
         options: [patch, minor, major]
 
 permissions:
@@ -23,12 +23,18 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: '.node-version'
           cache: npm
           registry-url: https://registry.npmjs.org/
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Require a major release for the Angular support change
+        env:
+          RELEASE_TYPE: ${{ inputs.release-type }}
+        run: |
+          node -e "if (require('./package.json').version.startsWith('2.') && process.env.RELEASE_TYPE !== 'major') { throw new Error('Dropping Angular 18/19 requires the v3 major release.'); }"
       - name: Verify before changing version or tags
-        run: npm run verify
+        run: npm run verify:release
       - name: Inspect package before release mutation
         run: npm pack ./dist/drag-drop-layout --dry-run
       - name: Configure Git

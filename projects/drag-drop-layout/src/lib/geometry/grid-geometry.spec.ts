@@ -1,3 +1,4 @@
+import {describe, it, expect} from 'vitest';
 import {GridGeometry, GridGeometrySnapshot} from './grid-geometry';
 import {GridItem} from '../item/item.definitions';
 
@@ -57,10 +58,10 @@ describe('GridGeometry', () => {
   });
 
   it('keeps the append edge tied to the original bottom and accounts for scrolling', () => {
-    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 80}, {x: 0, y: 100})).toBeFalse();
-    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 124}, {x: 0, y: 100})).toBeTrue();
-    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 1000}, {x: 0, y: 100})).toBeTrue();
-    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 74}, {x: 0, y: 150})).toBeTrue();
-    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 30}, {x: 0, y: 150})).toBeFalse();
+    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 80}, {x: 0, y: 100})).toBe(false);
+    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 124}, {x: 0, y: 100})).toBe(true);
+    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 1000}, {x: 0, y: 100})).toBe(true);
+    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 74}, {x: 0, y: 150})).toBe(true);
+    expect(geometry.isAtBottomEdge(snapshot, {x: 20, y: 30}, {x: 0, y: 150})).toBe(false);
   });
 });

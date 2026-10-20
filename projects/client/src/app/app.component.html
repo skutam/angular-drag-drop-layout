@@ -15,7 +15,9 @@
     </label>
     <label>Direction preference:
       <select [(ngModel)]="movePriority">
-        <option *ngFor="let order of directionOrders" [ngValue]="order.value">{{order.label}}</option>
+        @for (order of directionOrders; track order) {
+          <option [ngValue]="order.value">{{order.label}}</option>
+        }
       </select>
     </label>
     <label><input type="checkbox" [(ngModel)]="allowRowGrowth"> Allow new rows</label>
@@ -32,10 +34,12 @@
 <div class="group-flex-column">
   <h2>Resize Types:</h2>
   <div class="group-flex-row">
-    <label class="col" *ngFor="let resizeType of RESIZE_TYPES">
-      <input type="checkbox" [checked]="resizeTypes.includes(resizeType)" [value]="resizeType" (change)="toggleResizeType(resizeType)">
-      {{resizeType}}
-    </label>
+    @for (resizeType of RESIZE_TYPES; track resizeType) {
+      <label class="col">
+        <input type="checkbox" [checked]="resizeTypes.includes(resizeType)" [value]="resizeType" (change)="toggleResizeType(resizeType)">
+        {{resizeType}}
+      </label>
+    }
   </div>
 </div>
 
@@ -60,18 +64,18 @@
 <div class="group-flex-column">
   <h2>Grid:</h2>
   <div class="group-flex-row">
-      <label class="col"> Cols:
-        <input type="number" [(ngModel)]="columns" placeholder="cols">
-      </label>
-      <label class="col"> Rows:
-        <input type="number" [(ngModel)]="rowsTop" placeholder="rows">
-      </label>
-      <label class="col"> Col Gap:
-        <app-height-prop-picker [heightValue]="20" [heightUnit]="'px'" (heightProp)="colGap = $event"></app-height-prop-picker>
-      </label>
-      <label class="col"> Row gap:
-        <app-height-prop-picker [heightValue]="20" [heightUnit]="'px'" (heightProp)="rowGap = $event"></app-height-prop-picker>
-      </label>
+    <label class="col"> Cols:
+      <input type="number" [(ngModel)]="columns" placeholder="cols">
+    </label>
+    <label class="col"> Rows:
+      <input type="number" [(ngModel)]="rowsTop" placeholder="rows">
+    </label>
+    <label class="col"> Col Gap:
+      <app-height-prop-picker [heightValue]="20" [heightUnit]="'px'" (heightProp)="colGap = $event"></app-height-prop-picker>
+    </label>
+    <label class="col"> Row gap:
+      <app-height-prop-picker [heightValue]="20" [heightUnit]="'px'" (heightProp)="rowGap = $event"></app-height-prop-picker>
+    </label>
   </div>
   <div class="d-flex">
     <div class="group-flex-column mr2">
@@ -95,55 +99,64 @@
 </div>
 
 <ddl-grid gridId="grid-top" [connectedTo]="['grid-bottom']" [columns]="columns" class="grid-top"
-          [movePriority]="movePriority" [allowRowGrowth]="allowRowGrowth"
-          (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
-          [(rows)]="rowsTop"
-          [colGap]="colGap"
-          [rowGap]="rowGap"
-          [gridHeight]="gridHeight"
-          [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
-          [scrollableElement]="document"
-          [(items)]="itemsTop">
-  <ddl-item *ngFor="let item of itemsTop; trackBy: itemTrackBy"
-            [itemId]="item.id"
-            [resizable]="isResizable"
-            [draggable]="isDraggable"
-            [disabled]="isDisabled"
-            [resizeTypes]="resizeTypes">
-    <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
-    <span class="item-info-data">{{item.data}}</span>
-    <button *ngIf="showRemoveItemButton" class="remove-item-btn" (click)="removeItemTop(item.id)">x</button>
-    <div ddlDragHandle class="drag-handle">Handle</div>
-  </ddl-item>
+  [movePriority]="movePriority" [allowRowGrowth]="allowRowGrowth"
+  (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
+  [(rows)]="rowsTop"
+  [colGap]="colGap"
+  [rowGap]="rowGap"
+  [gridHeight]="gridHeight"
+  [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
+  [scrollableElement]="document"
+  [(items)]="itemsTop">
+  @for (item of itemsTop; track item.id) {
+    <ddl-item
+      [itemId]="item.id"
+      [resizable]="isResizable"
+      [draggable]="isDraggable"
+      [disabled]="isDisabled"
+      [resizeTypes]="resizeTypes">
+      <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
+      <span class="item-info-data">{{item.data}}</span>
+      @if (showRemoveItemButton) {
+        <button class="remove-item-btn" (click)="removeItemTop(item.id)">x</button>
+      }
+      <div ddlDragHandle class="drag-handle">Handle</div>
+    </ddl-item>
+  }
 </ddl-grid>
 
 <div class="drag-items" ddlDragItems [targets]="['grid-top', 'grid-bottom']">
-  <div ddlDragItem
-       class="drag-item"
-       [draggable]="true"
-       [disabled]="i == 1"
-       [width]="preferredWidth"
-       [insertionSizing]="insertionSizing"
-       [minInsertionWidth]="minInsertionWidth"
-       [height]="1"
-       [dragData]="i"
-       [scrollableElement]="document"
-       *ngFor="let dragItem of dragItems; let i = index">{{dragItem}}</div>
+  @for (dragItem of dragItems; track dragItem; let i = $index) {
+    <div ddlDragItem
+      class="drag-item"
+      [draggable]="true"
+      [disabled]="i == 1"
+      [width]="preferredWidth"
+      [insertionSizing]="insertionSizing"
+      [minInsertionWidth]="minInsertionWidth"
+      [height]="1"
+      [dragData]="i"
+      [scrollableElement]="document">{{dragItem}}</div>
+  }
 </div>
 
 <ddl-grid gridId="grid-bottom" [connectedTo]="['grid-top']" [columns]="columns" class="grid-bottom"
-          [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
-          [movePriority]="movePriority" [allowRowGrowth]="allowRowGrowth"
-          (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
-          [(rows)]="rowsBottom"
-          [colGap]="colGap"
-          [rowGap]="rowGap"
-          [scrollableElement]="document"
-          [(items)]="itemsBottom">
-  <ddl-item *ngFor="let item of itemsBottom; trackBy: itemTrackBy" [itemId]="item.id" [resizeTypes]="resizeTypes">
-    <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
-    <span class="item-info-data">{{item.data}}</span>
-    <button *ngIf="showRemoveItemButton" class="remove-item-btn" (click)="removeItemBottom(item.id)">x</button>
-    <div ddlDragHandle class="drag-handle">Handle</div>
-  </ddl-item>
+  [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
+  [movePriority]="movePriority" [allowRowGrowth]="allowRowGrowth"
+  (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
+  [(rows)]="rowsBottom"
+  [colGap]="colGap"
+  [rowGap]="rowGap"
+  [scrollableElement]="document"
+  [(items)]="itemsBottom">
+  @for (item of itemsBottom; track item.id) {
+    <ddl-item [itemId]="item.id" [resizeTypes]="resizeTypes">
+      <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>
+      <span class="item-info-data">{{item.data}}</span>
+      @if (showRemoveItemButton) {
+        <button class="remove-item-btn" (click)="removeItemBottom(item.id)">x</button>
+      }
+      <div ddlDragHandle class="drag-handle">Handle</div>
+    </ddl-item>
+  }
 </ddl-grid>

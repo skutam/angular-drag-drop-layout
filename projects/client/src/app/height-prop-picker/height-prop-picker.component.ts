@@ -4,7 +4,6 @@ import {HeightUnit, Unit} from "../../../../drag-drop-layout/src/lib/definitions
 
 @Component({
   selector: 'app-height-prop-picker',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     FormsModule

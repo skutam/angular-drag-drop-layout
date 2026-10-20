@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/%40skutam%2Fdrag-drop-layout)](https://www.npmjs.com/package/@skutam/drag-drop-layout)
 [![license](https://img.shields.io/github/license/skutam/angular-drag-drop-layout)](LICENSE)
 
-A signal-based Angular 18 CSS-grid library for transactional dragging, resizing, collision reflow, palette insertion, and explicit cross-grid transfers.
+A signal-based Angular 20?22 CSS-grid library for transactional dragging, resizing, collision reflow, palette insertion, and explicit cross-grid transfers.
 
 [View the demo](https://skutam.github.io/angular-drag-drop-layout/)
 
@@ -26,7 +26,11 @@ A signal-based Angular 18 CSS-grid library for transactional dragging, resizing,
 npm install @skutam/drag-drop-layout
 ```
 
-The v2 package supports Angular 18 and Node `^18.19.1 || ^20.11.1 || >=22`.
+The upcoming v3 release supports Angular `^20.3.34 || ^21.2.25 || ^22.2.3` and RxJS `^7.8.0`, with both Zone.js and zoneless change detection. Angular 18 and 19 consumers must upgrade before installing v3. Component selectors, inputs, outputs, and layout behavior remain unchanged.
+
+The library is built with Angular 20 using partial compilation. Use a Node version supported by your application's Angular version; the package minimum is `^20.19.0 || ^22.12.0 || >=24.0.0`. Repository development and CI use Node **24.21.0**, recorded in `.node-version`.
+
+Angular 20 upstream support ends on **November 28, 2026**. See [Angular's support schedule](https://angular.dev/reference/releases) and [the dependency security report](docs/dependency-security.md) for current maintenance limitations.
 
 ## Basic usage
 
@@ -200,10 +204,21 @@ Set `scrollableElement` to the scrolling element or `document` when the page scr
 
 ```bash
 npm ci
+npx playwright install chromium
 npm run test:lib
 npm run build
 ```
 
 Run `node scripts/benchmark-layout.cjs` in the repository to measure dense-grid insertion with 12, 48, and 120 widgets. The demo includes Half-row gap, Minimal movement, Full grid, and Transfer presets.
 
-Use `npm run watch:lib` with `npm run serve:client` for interactive development. See [the architecture guide](docs/architecture.md) for the library's internal structure.
+Use `npm run watch:lib` with `npm run serve:client` for interactive development. The demo uses Angular's esbuild application builder and Vite development server. It remains a static application deployed from `dist/client` to GitHub Pages. The library is still packaged with `ng-packagr`.
+
+After building, run `npx playwright install chromium` and `npm run test:compatibility` to install the same tarball into isolated Angular 20, 21, and 22 consumers and test browser interactions in both change-detection modes. Use `npm run test:compatibility -- --angular=22` for one major, or set `CHROME_BIN` to an installed Chromium-based browser. Generated consumers and failure traces are under `dist/compatibility`; their dependency manifests and locks are under `tests/compatibility/consumers`.
+
+Unit tests use Vitest 3 in Playwright Chromium through Angular 20's experimental unit-test builder. Run `npm test` for both projects or `npm run test:lib` / `npm run test:client` separately.
+
+After building the demo, `npm run test:demo` checks its controls, drag/resize/palette/transfer behavior, scrolling, and assets in Chromium. Screenshots and failure traces are written to `dist/demo-results`. Set `DEMO_BASE=/angular-drag-drop-layout/` when checking the GitHub Pages build.
+
+`npm run verify` runs production builds, unit tests, demo browser checks, and the high/critical security gate. `npm run verify:release` also runs package compatibility checks. The release workflow requires a major release while the package is still v2, keeping version changes synchronized through `standard-version`.
+
+See [the architecture guide](docs/architecture.md) for the library's internal structure.

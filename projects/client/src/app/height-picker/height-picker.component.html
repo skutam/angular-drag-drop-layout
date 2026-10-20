@@ -1,8 +1,10 @@
 <div class="group-flex-column">
   <div class="group-flex-row">
-    <label class="col" *ngFor="let opt of ['auto', 'max-content', 'min-content', 'fit-content', 'stretch']">
-      <input type="radio" name="gridHeight" (change)="valueMode.set(false)" [(ngModel)]="heightUnitValue" [value]="opt">{{opt}}
-    </label>
+    @for (opt of ['auto', 'max-content', 'min-content', 'fit-content', 'stretch']; track opt) {
+      <label class="col">
+        <input type="radio" name="gridHeight" (change)="valueMode.set(false)" [(ngModel)]="heightUnitValue" [value]="opt">{{opt}}
+      </label>
+    }
     <label class="col">
       <input type="radio" name="gridHeight" (change)="valueMode.set(true)" [value]="'value'">Switch to value:
     </label>

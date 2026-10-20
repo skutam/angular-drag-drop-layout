@@ -1,3 +1,4 @@
+import {describe, it, expect} from 'vitest';
 import {TestBed} from '@angular/core/testing';
 import {createGridItem} from '@skutam/drag-drop-layout';
 import {AppComponent} from './app.component';
@@ -22,6 +23,6 @@ describe('AppComponent', () => {
     app.columns = 4;
     app.itemsTop = [createGridItem({x: 3, y: 1, width: 2, height: 1})];
     app.addItemTop();
-    expect(app.itemsTop[1]).toEqual(jasmine.objectContaining({x: 3, y: 2, width: 2}));
+    expect(app.itemsTop[1]).toEqual(expect.objectContaining({x: 3, y: 2, width: 2}));
   });
 });

@@ -1,5 +1,4 @@
-import {DOCUMENT} from '@angular/common';
-import {DestroyRef, Inject, Injectable, NgZone} from '@angular/core';
+import {DestroyRef, DOCUMENT, Inject, Injectable, NgZone} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {auditTime, filter, fromEvent, merge, Observable, Subject, Subscription} from 'rxjs';
 import {IPosition} from '../definitions';

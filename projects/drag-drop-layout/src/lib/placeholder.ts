@@ -1,5 +1,4 @@
-import {DOCUMENT} from '@angular/common';
-import {DestroyRef, Inject, Injectable} from '@angular/core';
+import {DestroyRef, DOCUMENT, Inject, Injectable} from '@angular/core';
 import {RenderedRect} from './geometry/grid-geometry';
 
 @Injectable({providedIn: 'root'})
