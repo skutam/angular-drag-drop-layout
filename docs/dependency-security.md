@@ -63,4 +63,4 @@ Use Node 24.21.0. Run `npm ci`, `npx playwright install chromium`, and `npm run 
 
 To check GitHub Pages, run `npm run build:client:github-pages`, then run `npm run test:demo` with `DEMO_BASE=/angular-drag-drop-layout/` in the environment. Use `CHROME_BIN` to select a different Chromium executable for the demo or consumer Playwright checks; unit tests use Playwright's installed Chromium.
 
-The next release remains v3 because Angular 18/19 support was removed. This tooling migration does not change public APIs, peer ranges, or package versions; standard-version performs the synchronized major bump during release.
+The next release is v2 because Angular 18/19 support was removed. This tooling migration does not change public APIs, peer ranges, or package versions; standard-version performs the synchronized major bump during release.

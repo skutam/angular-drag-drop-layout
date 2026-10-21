@@ -26,7 +26,7 @@ A signal-based Angular 20?22 CSS-grid library for transactional dragging, resizi
 npm install @skutam/drag-drop-layout
 ```
 
-The upcoming v3 release supports Angular `^20.3.34 || ^21.2.25 || ^22.2.3` and RxJS `^7.8.0`, with both Zone.js and zoneless change detection. Angular 18 and 19 consumers must upgrade before installing v3. Component selectors, inputs, outputs, and layout behavior remain unchanged.
+The upcoming v2 release supports Angular `^20.3.34 || ^21.2.25 || ^22.2.3` and RxJS `^7.8.0`, with both Zone.js and zoneless change detection. Angular 18 and 19 consumers must upgrade before installing v2. Component selectors, inputs, outputs, and layout behavior remain unchanged.
 
 The library is built with Angular 20 using partial compilation. Use a Node version supported by your application's Angular version; the package minimum is `^20.19.0 || ^22.12.0 || >=24.0.0`. Repository development and CI use Node **24.21.0**, recorded in `.node-version`.
 
@@ -275,7 +275,7 @@ Unit tests use Vitest 3 in Playwright Chromium through Angular 20's experimental
 
 After building the demo, `npm run test:demo` checks its controls, drag/resize/palette/transfer behavior, scrolling, and assets in Chromium. Screenshots and failure traces are written to `dist/demo-results`. Set `DEMO_BASE=/angular-drag-drop-layout/` when checking the GitHub Pages build.
 
-`npm run verify` runs production builds, unit tests, demo browser checks, and the high/critical security gate. `npm run verify:release` also runs package compatibility checks. The release workflow requires a major release while the package is still v2, keeping version changes synchronized through `standard-version`.
+`npm run verify` runs production builds, unit tests, demo browser checks, and the high/critical security gate. `npm run verify:release` also runs package compatibility checks. The release workflow requires a major release while the package is still v1, keeping version changes synchronized through `standard-version`.
 
 ## Releasing to npm
 
@@ -284,7 +284,7 @@ Releases use npm trusted publishing (OIDC) from GitHub Actions. Configure the Tr
 The workflow uses a GitHub-hosted runner and the Node version in `.node-version`. It checks for stable npm >=11.5.1 before installing dependencies or changing versions. The release job grants `id-token: write` for npm authentication and `contents: write` for the Git commit, tag, and GitHub release. No npm publishing token is required. See [npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/) for setup requirements.
 
 1. Merge the release changes to `master`.
-2. In GitHub Actions, select **Release npm package**, choose **Run workflow** on `master`, and select the release type. While the package is v2, select **major** to release v3 with the Angular support change.
+2. In GitHub Actions, select **Release npm package**, choose **Run workflow** on `master`, and select the release type. While the package is v1, select **major** to release v2 with the Angular support change.
 3. The single run verifies builds, tests, browser interactions, security, and package compatibility; inspects the package; bumps synchronized versions and the changelog; rebuilds; pushes the release commit/tag; publishes to npm; and creates the GitHub release. There is no staging approval or second run ID.
 4. Confirm the version on npm, the Git tag, and the GitHub release. For the first OIDC publish, confirm npm marks the trusted publisher validated before the deadline shown in its settings. If that configuration expires, recreate it before publishing.
 5. After a successful OIDC release, remove the obsolete GitHub `NPM_TOKEN` secret and revoke the old npm token if unused elsewhere. You can then disable traditional token publishing in the npm package settings.

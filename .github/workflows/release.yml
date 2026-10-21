@@ -48,7 +48,7 @@ jobs:
         env:
           RELEASE_TYPE: ${{ inputs.release-type }}
         run: |
-          node -e "if (require('./package.json').version.startsWith('2.') && process.env.RELEASE_TYPE !== 'major') { throw new Error('Dropping Angular 18/19 requires the v3 major release.'); }"
+          node -e "if (require('./package.json').version.startsWith('1.') && process.env.RELEASE_TYPE !== 'major') { throw new Error('Dropping Angular 18/19 requires the v2 major release.'); }"
       - name: Verify before changing version or tags
         run: npm run verify:release
       - name: Inspect package before release mutation
