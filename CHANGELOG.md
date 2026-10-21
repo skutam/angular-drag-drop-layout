@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/skutam/angular-drag-drop-layout/compare/v1.3.1...v2.0.0) (2026-10-21)
+
+
+### Features
+
+* Added functionality for removing empty rows with custom template ([2748a0f](https://github.com/skutam/angular-drag-drop-layout/commit/2748a0fbc375625eaf9906566c31a0ce5871a133))
+* Move items out of the way ([#27](https://github.com/skutam/angular-drag-drop-layout/issues/27)) ([e19475a](https://github.com/skutam/angular-drag-drop-layout/commit/e19475a1689c653166f62d0cedf55fb3aa5a0396))
+* Upgraded Angular to support 20 - 22, fixed dependencies ([3456239](https://github.com/skutam/angular-drag-drop-layout/commit/3456239657ff9bb0133c898699e7d215f2a5965f))
+
+
+### Bug Fixes
+
+* Removed default red background color from grid-item ([#53](https://github.com/skutam/angular-drag-drop-layout/issues/53)) ([48063a2](https://github.com/skutam/angular-drag-drop-layout/commit/48063a2b2e3c854d865cdc4fbe2ed5b54a0235f6))
+
 ### [1.3.1](https://github.com/skutam/angular-drag-drop-layout/compare/v1.3.0...v1.3.1) (2025-09-18)
 
 
