@@ -27,6 +27,7 @@
     <button (click)="loadScenario('cascade')">Minimal movement</button>
     <button (click)="loadScenario('full')">Full grid</button>
     <button (click)="loadScenario('transfer')">Transfer</button>
+    <button (click)="loadScenario('empty-rows')">Empty rows</button>
   </div>
   <p role="status">{{placementMessage}}</p>
 </div>
@@ -100,7 +101,7 @@
 
 <ddl-grid gridId="grid-top" [connectedTo]="['grid-bottom']" [columns]="columns" class="grid-top"
   [movePriority]="movePriority" [allowRowGrowth]="allowRowGrowth"
-  (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
+  (emptyRowRemoved)="onEmptyRowRemoved($event)" (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
   [(rows)]="rowsTop"
   [colGap]="colGap"
   [rowGap]="rowGap"
@@ -108,6 +109,11 @@
   [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
   [scrollableElement]="document"
   [(items)]="itemsTop">
+  <ng-template ddlEmptyRow let-row let-remove="remove" let-canRemove="canRemove">
+    <div class="empty-row-control">
+      <button type="button" [disabled]="!canRemove" (click)="remove()">Remove empty row {{row}}</button>
+    </div>
+  </ng-template>
   @for (item of itemsTop; track item.id) {
     <ddl-item
       [itemId]="item.id"
@@ -143,12 +149,17 @@
 <ddl-grid gridId="grid-bottom" [connectedTo]="['grid-top']" [columns]="columns" class="grid-bottom"
   [itemMinHeight]="itemMinHeightIsNull ? null : itemMinHeight"
   [movePriority]="movePriority" [allowRowGrowth]="allowRowGrowth"
-  (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
+  (emptyRowRemoved)="onEmptyRowRemoved($event)" (placementCommitted)="onCommitted($event)" (placementRejected)="onRejected($event)"
   [(rows)]="rowsBottom"
   [colGap]="colGap"
   [rowGap]="rowGap"
   [scrollableElement]="document"
   [(items)]="itemsBottom">
+  <ng-template ddlEmptyRow let-row let-remove="remove" let-canRemove="canRemove">
+    <div class="empty-row-control">
+      <button type="button" [disabled]="!canRemove" (click)="remove()">Remove row {{row}}</button>
+    </div>
+  </ng-template>
   @for (item of itemsBottom; track item.id) {
     <ddl-item [itemId]="item.id" [resizeTypes]="resizeTypes">
       <div class="item-info">{{item.id}} [{{item.x}},{{item.y}}] ({{item.width}},{{item.height}})</div>

@@ -1,4 +1,4 @@
-import {DestroyRef, DOCUMENT, Inject, Injectable, NgZone} from '@angular/core';
+import {DestroyRef, DOCUMENT, Inject, Injectable, NgZone, signal} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {auditTime, filter, fromEvent, merge, Observable, Subject, Subscription} from 'rxjs';
 import {IPosition} from '../definitions';
@@ -25,6 +25,8 @@ type ActiveInteraction = {
 
 @Injectable({providedIn: 'root'})
 export class GridService {
+  private readonly interactionActiveState = signal(false);
+  public readonly interactionActive = this.interactionActiveState.asReadonly();
   public readonly pointerMove$: Observable<PointerInteractionEvent>;
   public readonly pointerEnd$: Observable<PointerInteractionEvent>;
 
@@ -150,6 +152,7 @@ export class GridService {
       initialSize: {width: rect.width, height: rect.height},
       lastPointer: {x: event.clientX, y: event.clientY},
     };
+    this.interactionActiveState.set(true);
     this.placeholder.show({
       left: rect.left + window.scrollX,
       top: rect.top + window.scrollY,
@@ -306,6 +309,7 @@ export class GridService {
     this.moveSubscription?.unsubscribe();
     this.moveSubscription = null;
     this.active = null;
+    this.interactionActiveState.set(false);
   }
 
   private restorePreview(
