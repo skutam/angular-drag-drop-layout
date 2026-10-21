@@ -277,4 +277,26 @@ After building the demo, `npm run test:demo` checks its controls, drag/resize/pa
 
 `npm run verify` runs production builds, unit tests, demo browser checks, and the high/critical security gate. `npm run verify:release` also runs package compatibility checks. The release workflow requires a major release while the package is still v2, keeping version changes synchronized through `standard-version`.
 
+## Releasing to npm
+
+Releases use npm trusted publishing (OIDC) from GitHub Actions. Configure the Trusted Publisher for `@skutam/drag-drop-layout` on npmjs.com with provider **GitHub Actions**, user **skutam**, repository **angular-drag-drop-layout**, and workflow filename **release.yml** (not its display name or full path). Leave the environment field empty: this workflow does not declare a GitHub environment. Enable direct `npm publish` permission; staging-only permission is insufficient.
+
+The workflow uses a GitHub-hosted runner and the Node version in `.node-version`. It checks for stable npm >=11.5.1 before installing dependencies or changing versions. The release job grants `id-token: write` for npm authentication and `contents: write` for the Git commit, tag, and GitHub release. No npm publishing token is required. See [npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/) for setup requirements.
+
+1. Merge the release changes to `master`.
+2. In GitHub Actions, select **Release npm package**, choose **Run workflow** on `master`, and select the release type. While the package is v2, select **major** to release v3 with the Angular support change.
+3. The single run verifies builds, tests, browser interactions, security, and package compatibility; inspects the package; bumps synchronized versions and the changelog; rebuilds; pushes the release commit/tag; publishes to npm; and creates the GitHub release. There is no staging approval or second run ID.
+4. Confirm the version on npm, the Git tag, and the GitHub release. For the first OIDC publish, confirm npm marks the trusted publisher validated before the deadline shown in its settings. If that configuration expires, recreate it before publishing.
+5. After a successful OIDC release, remove the obsolete GitHub `NPM_TOKEN` secret and revoke the old npm token if unused elsewhere. You can then disable traditional token publishing in the npm package settings.
+
+### Recovering a failed release
+
+Inspect the failed step and check both the remote Git tag and the exact npm package version before retrying. The workflow pushes the release commit/tag **before** publishing, so an npm authentication failure can leave a tagged version that is not published. Do not start another release or rerun all jobs blindly: that can bump the version again.
+
+- If no version commit/tag was pushed and npm has no new version, fix the failure and start a fresh release from the unchanged `master`.
+- If the tag exists but npm has no corresponding version, fix the publisher configuration and recover that exact tagged version without running `standard-version` again. This workflow has no publish-only recovery input. A maintainer can use a clean checkout of that tag, run `npm ci`, install Playwright Chromium, run `npm run verify:release`, inspect `npm pack ./dist/drag-drop-layout --dry-run`, and publish from `dist/drag-drop-layout` with `npm publish --access public` using an authorized interactive npm login and 2FA. A local publish does not validate the GitHub trusted publisher; OIDC recovery requires a separately reviewed publish-only change in the trusted `release.yml` workflow, targeting the existing tag.
+- If npm already contains the intended version, do not republish or bump it. Verify that it is the intended release, then create only the missing GitHub release from the existing tag, with generated release notes.
+
+Never move an existing release tag or attempt to overwrite an npm version during recovery.
+
 See [the architecture guide](docs/architecture.md) for the library's internal structure.
