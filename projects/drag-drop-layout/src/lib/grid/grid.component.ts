@@ -2,6 +2,8 @@ import {
   AfterContentInit,
   ChangeDetectionStrategy,
   Component,
+  computed,
+  contentChild,
   ContentChildren,
   DestroyRef,
   effect,
@@ -24,6 +26,8 @@ import {GridItem, getResizeInfo} from '../item/item.definitions';
 import {ItemComponent} from '../item/item.component';
 import {LayoutEngine, validPriority} from '../layout/layout-engine';
 import {prepareInsertion} from '../layout/insertion';
+import {EmptyRowContext, EmptyRowDirective} from '../directives/empty-row.directive';
+import {EmptyRowRemovedEvent, findEmptyRows, removeEmptyLayoutRow} from '../layout/empty-rows';
 import {
   DEFAULT_MOVE_PRIORITY,
   LayoutSnapshot,
@@ -67,6 +71,22 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
 
   public readonly placementCommitted = output<PlacementCommittedEvent>();
   public readonly placementRejected = output<PlacementRejectedEvent>();
+  public readonly emptyRowRemoved = output<EmptyRowRemovedEvent>();
+
+  private readonly acceptedLayout = signal<LayoutSnapshot | null>(null);
+  private readonly removingRow = signal(false);
+  public readonly emptyRows = computed<readonly number[]>(() => {
+    const layout = this.acceptedLayout();
+    return layout ? findEmptyRows(layout) : [];
+  });
+  protected readonly emptyRowTemplate = contentChild(EmptyRowDirective);
+  protected readonly rowControlsBlocked = computed(() => this.gridService.interactionActive() || this.removingRow());
+  protected readonly emptyRowContexts = computed<readonly EmptyRowContext[]>(() => this.emptyRows().map(row => ({
+    $implicit: row,
+    row,
+    canRemove: this.canRemoveEmptyRow(row),
+    remove: () => this.removeEmptyRow(row),
+  })));
 
   public readonly renderedRows = signal(3);
   public readonly interactionMinHeight = signal<number | null>(null);
@@ -171,6 +191,36 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
 
   public captureGeometry(scroll: IPosition): GridGeometrySnapshot {
     return this.geometry.capture(this.grid.nativeElement, this.lastValidColumns, this.lastValidRows, scroll);
+  }
+
+  public canRemoveEmptyRow(row: number): boolean {
+    const layout = this.acceptedLayout();
+    return !!layout && !this.rowControlsBlocked() && this.rows() === layout.rows &&
+      this.columns() === layout.columns && sameLayout(this.items(), layout.items) &&
+      layout.rows > 1 && Number.isInteger(row) && this.emptyRows().includes(row);
+  }
+
+  public removeEmptyRow(row: number): boolean {
+    if (!this.canRemoveEmptyRow(row)) return false;
+    const result = removeEmptyLayoutRow(this.snapshot(), row);
+    if (!result) return false;
+    this.removingRow.set(true);
+    try {
+      this.lastValidItems = result.items;
+      this.lastValidRows = result.rows;
+      this.publishAcceptedLayout();
+      this.clearPreview(result);
+      this.items.set(result.items);
+      this.rows.set(result.rows);
+    } finally {
+      this.removingRow.set(false);
+    }
+    this.emptyRowRemoved.emit({gridId: this.gridId(), row, items: result.items, rows: result.rows});
+    return true;
+  }
+
+  private publishAcceptedLayout(): void {
+    this.acceptedLayout.set({items: this.lastValidItems, rows: this.lastValidRows, columns: this.lastValidColumns});
   }
 
   public preview(
@@ -288,6 +338,7 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
     const result = this.previewResult;
     this.lastValidItems = result.items;
     this.lastValidRows = result.rows;
+    this.publishAcceptedLayout();
     this.items.set(result.items);
     this.rows.set(result.rows);
     this.previewResult = null;
@@ -300,6 +351,7 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
     this.placementCache = null;
     const items = this.lastValidItems.filter((item) => item.id !== itemId);
     this.lastValidItems = items;
+    this.publishAcceptedLayout();
     this.items.set(items);
     this.previewResult = null;
     this.applyRenderedRows(this.lastValidRows);
@@ -343,6 +395,7 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
         this.lastValidRows = rows;
         this.lastValidColumns = columns;
         this.hasAcceptedLayout = true;
+        this.publishAcceptedLayout();
       }
       this.columns.set(this.lastValidColumns);
       this.rows.set(this.lastValidRows);
@@ -366,6 +419,7 @@ export class GridComponent implements AfterContentInit, OnDestroy, GridInteracti
     this.lastValidRows = normalized.rows;
     this.lastValidColumns = columns;
     this.hasAcceptedLayout = true;
+    this.publishAcceptedLayout();
     this.applyRenderedRows(normalized.rows);
     if (!sameLayout(items, normalized.items) || rows !== normalized.rows) {
       this.rows.set(normalized.rows);

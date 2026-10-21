@@ -22,6 +22,8 @@ export {
   PlacementRejectionReason,
 } from './lib/layout/layout.definitions';
 export * from './lib/directives/drag-handle.directive';
+export {EmptyRowDirective, EmptyRowContext} from './lib/directives/empty-row.directive';
+export {EmptyRowRemovedEvent} from './lib/layout/empty-rows';
 export * from './lib/directives/drag-item.directive';
 export * from './lib/directives/drag-items.directive';
 export * from './lib/drag-drop-layout.module';

@@ -7,9 +7,18 @@
   --ddl-grid-item-min-height: 2em; /* Minimum row height */
 
   display: grid;
+  position: relative;
   height: var(--ddl-grid-prop-height);
   min-width: 0;
   grid-template-columns: repeat(var(--ddl-grid-columns), 1fr);
   grid-column-gap: var(--ddl-grid-col-gap);
   grid-row-gap: var(--ddl-grid-row-gap);
+}
+
+.ddl-empty-row {
+  position: absolute;
+  grid-column: 1 / -1;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
 }

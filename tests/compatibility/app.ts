@@ -1,6 +1,6 @@
 import {Component, signal} from '@angular/core';
 import {JsonPipe} from '@angular/common';
-import {createGridItem, DragDropLayoutModule, GridItem, PlacementCommittedEvent, PlacementRejectedEvent} from '@skutam/drag-drop-layout';
+import {createGridItem, DragDropLayoutModule, GridItem, EmptyRowRemovedEvent, PlacementCommittedEvent, PlacementRejectedEvent} from '@skutam/drag-drop-layout';
 
 @Component({
   selector: 'compat-app',
@@ -23,6 +23,10 @@ export class CompatibilityApp {
   committed(event: PlacementCommittedEvent): void {
     const target = event.targetGridId === 'a' ? this.itemsA() : this.itemsB();
     this.record(`commit:${event.operation}:${target.some(item => item.id === event.item.id)}`);
+  }
+
+  removed(event: EmptyRowRemovedEvent): void {
+    this.record(`removed:${event.row}:${this.rowsA() === event.rows && this.itemsA() === event.items}`);
   }
 
   rejected(event: PlacementRejectedEvent): void {

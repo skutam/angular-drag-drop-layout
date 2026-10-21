@@ -121,6 +121,62 @@ External changes to `items`, `rows`, or `columns` during an interaction involvin
 
 The `items` model is immutable. Every addition, removal, reorder, or item update must provide a new array reference; in-place mutations such as `push`, `splice`, or assigning an array index are not supported. Replace the affected `GridItem` record when changing coordinates, spans, IDs, or data.
 
+## Removing empty rows
+
+Remove unwanted spacing explicitly with `grid.removeEmptyRow(row)`. Row numbers are one-based. Any empty row can be removed, including the first or last, but the grid retains at least one row. A widget spanning into a row makes that row occupied. Removal shifts every item below it up one row, preserving IDs, data, order, columns and dimensions. Other gaps remain.
+
+The grid exposes `emptyRows()` (a readonly signal of ascending row numbers), `canRemoveEmptyRow(row)` and `removeEmptyRow(row)`. The removal method returns `true` on success and `false` without a removal event for an invalid index, occupied row, final remaining row, uninitialized grid, pending external layout update, or active pointer interaction. Empty rows reflect the accepted layout, never temporary previews. The final empty row remains in the list even though it cannot be removed.
+
+To supply controls, project one optional template directly into the grid:
+
+```html
+<ddl-grid #grid gridId="form" [(items)]="items" [(rows)]="rows"
+  [itemMinHeight]="'48px'" (emptyRowRemoved)="saveLayout($event)">
+  <!-- Project your ddl-item components here. -->
+  <ng-template ddlEmptyRow let-row let-remove="remove" let-canRemove="canRemove">
+    <div class="empty-row-control">
+      <button type="button" [disabled]="!canRemove" (click)="remove()">
+        Remove row {{ row }}
+      </button>
+    </div>
+  </ng-template>
+</ddl-grid>
+```
+
+`EmptyRowDirective` is exported by `DragDropLayoutModule` and is also standalone. Its typed `EmptyRowContext` provides `$implicit` and `row` (the row number), `canRemove`, and `remove(): boolean`. Without the template the library renders no row controls. The template occupies the full row area without affecting track sizing; style its content in the consuming component:
+
+```css
+.empty-row-control {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.empty-row-control button { opacity: 0; pointer-events: none; }
+.empty-row-control:hover button,
+.empty-row-control:focus-within button { opacity: 1; pointer-events: auto; }
+.empty-row-control button:focus-visible { outline: 2px solid currentColor; }
+@media (hover: none) {
+  .empty-row-control button { opacity: 1; pointer-events: auto; }
+}
+```
+
+This reveals the button on row hover or keyboard focus and keeps it visible on touch devices. Configure a positive `itemMinHeight` when empty rows need a usable hover target: the overlay does not expand collapsed zero-height tracks. A fixed `gridHeight` remains fixed after removing a logical row.
+
+External toolbars can use the same API without a template:
+
+```html
+@for (row of grid.emptyRows(); track row) {
+  <button type="button" [disabled]="!grid.canRemoveEmptyRow(row)"
+    (click)="grid.removeEmptyRow(row)">Remove row {{ row }}</button>
+}
+```
+
+Row controls are hidden and inert, and programmatic removal is blocked, during dragging, resizing, palette insertion and transfers across grids sharing the interaction service. Availability returns after completion or cancellation.
+
+Successful removal updates the existing `items` and `rows` models, then emits one `emptyRowRemoved` event with `{gridId, row, items, rows}` (`EmptyRowRemovedEvent`). `row` is the removed row's original index; `items` and `rows` are the resulting layout. Model outputs are separate notifications; use the completion event when saving the complete pair. Removal does not emit `placementCommitted` or `placementRejected`. The application owns persistence, confirmation if desired, undo history and focus restoration after removing its focused control. There is no automatic compaction or deletion of occupied rows.
+
 ## Multiple grids
 
 Connections use stable grid IDs, never component references:

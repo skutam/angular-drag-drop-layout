@@ -2,6 +2,7 @@ import {Component} from '@angular/core';
 import {
   createGridItem,
   DragDropLayoutModule,
+  EmptyRowRemovedEvent,
   GridItem,
   HeightProp,
   HeightUnit,
@@ -86,7 +87,7 @@ export class AppComponent {
     this.minInsertionWidth = Number.isFinite(value) ? Math.max(1, Math.min(this.preferredWidth, Math.floor(value))) : 1;
   }
 
-  public loadScenario(scenario: 'gap' | 'cascade' | 'full' | 'transfer'): void {
+  public loadScenario(scenario: 'gap' | 'cascade' | 'full' | 'transfer' | 'empty-rows'): void {
     this.columns = scenario === 'cascade' ? 4 : 12;
     this.rowsTop = this.rowsBottom = scenario === 'full' ? 1 : 3;
     this.preferredWidth = scenario === 'cascade' ? 2 : 12;
@@ -97,7 +98,15 @@ export class AppComponent {
     this.itemMinHeightIsNull = false;
     this.movePriority = scenario === 'cascade' ? this.directionOrders[1].value : this.directionOrders[0].value;
     this.itemsBottom = [];
-    if (scenario === 'gap') {
+    if (scenario === 'empty-rows') {
+      this.rowsTop = 5;
+      this.itemsTop = [
+        createGridItem({x: 1, y: 1, width: 6, height: 1, data: 'Name'}),
+        createGridItem({x: 1, y: 3, width: 12, height: 1, data: 'Address'}),
+        createGridItem({x: 1, y: 5, width: 12, height: 1, data: 'Notes'}),
+      ];
+      this.placementMessage = 'Hover or focus an empty row to remove it. Fields below move up one row.';
+    } else if (scenario === 'gap') {
       this.itemsTop = [createGridItem({x: 1, y: 1, width: 6, height: 1, data: 'Existing input'})];
       this.placementMessage = 'Drop a palette widget in the empty right half: it will fit six columns.';
     } else if (scenario === 'cascade') {
@@ -119,6 +128,10 @@ export class AppComponent {
 
   public onCommitted(event: PlacementCommittedEvent): void {
     this.placementMessage = `${event.operation}: ${event.item.width} columns at (${event.item.x}, ${event.item.y}), ${event.rows} rows.`;
+  }
+
+  public onEmptyRowRemoved(event: EmptyRowRemovedEvent): void {
+    this.placementMessage = `Removed empty row ${event.row} from ${event.gridId}; ${event.rows} rows remain.`;
   }
 
   public onRejected(event: PlacementRejectedEvent): void {

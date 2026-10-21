@@ -76,6 +76,7 @@ test('transfers atomically with destination and source updates before the event'
   await move(page, await point(page, 'b', 2, 1));
   await page.mouse.up();
   await expect(page.locator('#a ddl-item')).toHaveCount(0);
+  await expect(page.locator('#empty-rows')).toHaveText('[ 1, 2 ]');
   await expect(page.locator('#b ddl-item span')).toHaveText('2,1:1,1');
   await expect.poll(() => events(page)).toEqual(['items:b', 'items:a', 'commit:transfer:true']);
 });
@@ -130,4 +131,14 @@ test('keeps pointer coordinates correct after scrolling during a drag', async ({
   await move(page, await point(page, 'a', 3, 2));
   await page.mouse.up();
   await expect(page.locator('#a ddl-item span')).toHaveText('3,2:1,1');
+});
+
+
+test('removes an empty row through the typed template and commits both models before its event', async ({page}) => {
+  await expect(page.locator('#empty-rows')).toHaveText('[ 2 ]');
+  await page.getByRole('button', {name: 'Remove row 2', exact: true}).click();
+  await expect.poll(async () => (await state(page)).rowsA).toBe(1);
+  await expect(page.locator('#a ddl-item span')).toHaveText('1,1:1,1');
+  await expect(page.locator('#empty-rows')).toHaveText('[]');
+  await expect.poll(() => events(page)).toEqual(['items:a', 'rows:a', 'removed:2:true']);
 });

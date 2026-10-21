@@ -114,3 +114,68 @@ test('respects disabled dragging and remains usable after scrolling', async ({pa
   await drag(page, item.locator('[ddlDragHandle]'), await gridPoint(page, '.grid-top', 0.45, 0.5));
   await expect(page.getByRole('status')).toContainText('move:');
 });
+
+
+test('reveals empty-row controls on hover and removes exactly one gap', async ({page}, info) => {
+  await page.getByRole('button', {name: 'Empty rows', exact: true}).click();
+  const grid = page.locator('.grid-top');
+  await grid.scrollIntoViewIfNeeded();
+  const control = grid.getByRole('button', {name: 'Remove row 2', exact: true});
+  await page.mouse.move(0, 0);
+  await expect(control).toHaveCSS('opacity', '0');
+  const wrapper = grid.locator('.ddl-empty-row').first();
+  await wrapper.hover();
+  await expect(control).toHaveCSS('opacity', '1');
+  await grid.screenshot({path: info.outputPath('empty-row-hover.png')});
+  await control.click();
+  await expect(page.getByRole('status')).toContainText('Removed empty row 2 from grid-top; 4 rows remain.');
+  await expect(grid.locator('ddl-item')).toHaveCount(3);
+  await expect(grid.locator('.item-info').nth(1)).toContainText('[1,2] (12,1)');
+  await expect(grid.locator('.item-info').nth(2)).toContainText('[1,4] (12,1)');
+  await expect(grid.locator('.ddl-empty-row')).toHaveCount(1);
+  await grid.screenshot({path: info.outputPath('empty-row-removed.png')});
+});
+
+test('allows keyboard removal and keeps overlays aligned after resize and scroll', async ({page}) => {
+  await page.getByRole('button', {name: 'Empty rows', exact: true}).click();
+  await page.setViewportSize({width: 1000, height: 700});
+  const grid = page.locator('.grid-top');
+  await grid.scrollIntoViewIfNeeded();
+  const wrapper = grid.locator('.ddl-empty-row').first();
+  const bounds = await wrapper.boundingBox();
+  const upper = await grid.locator('ddl-item').first().boundingBox();
+  expect(bounds!.y).toBeCloseTo(upper!.y + upper!.height + 20, 0);
+  expect(bounds!.height).toBeGreaterThanOrEqual(100);
+  const control = grid.getByRole('button', {name: 'Remove row 2', exact: true});
+  await control.focus();
+  await expect(control).toHaveCSS('opacity', '1');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toContainText('Removed empty row 2');
+});
+
+test('allows dropping into a row covered by custom empty-row controls', async ({page}) => {
+  await page.getByRole('button', {name: 'Empty rows', exact: true}).click();
+  const grid = page.locator('.grid-top');
+  await grid.scrollIntoViewIfNeeded();
+  const bounds = await grid.locator('.ddl-empty-row').first().boundingBox();
+  const handle = grid.locator('[ddlDragHandle]').first();
+  const handleBounds = await handle.boundingBox();
+  await drag(page, handle, {
+    x: handleBounds!.x + handleBounds!.width / 2, y: bounds!.y + bounds!.height / 2,
+  });
+  await expect(grid.locator('.item-info').first()).toContainText('[1,2]');
+  await expect(page.getByRole('status')).toContainText('move:');
+  await expect(grid.getByRole('button', {name: 'Remove row 1', exact: true})).toBeEnabled();
+  await expect(grid.getByRole('button', {name: 'Remove row 2', exact: true})).toHaveCount(0);
+});
+
+test.describe('touch empty-row controls', () => {
+  test.use({hasTouch: true, isMobile: true});
+  test('keeps the removal button visible without hover', async ({page}) => {
+    await page.getByRole('button', {name: 'Empty rows', exact: true}).tap();
+    const control = page.locator('.grid-top').getByRole('button', {name: 'Remove row 2', exact: true});
+    await expect(control).toHaveCSS('opacity', '1');
+    await control.tap();
+    await expect(page.getByRole('status')).toContainText('Removed empty row 2');
+  });
+});

@@ -1,1 +1,10 @@
 <ng-content></ng-content>
+@if (emptyRowTemplate(); as controls) {
+  @for (context of emptyRowContexts(); track context.row) {
+    <div class="ddl-empty-row" [style.grid-row]="context.row + ' / span 1'"
+      [style.visibility]="rowControlsBlocked() ? 'hidden' : null"
+      [attr.inert]="rowControlsBlocked() ? '' : null">
+      <ng-container [ngTemplateOutlet]="controls.template" [ngTemplateOutletContext]="context"></ng-container>
+    </div>
+  }
+}
