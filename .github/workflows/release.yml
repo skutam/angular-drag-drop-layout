@@ -16,6 +16,9 @@ jobs:
   release:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     concurrency: npm-release
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +29,19 @@ jobs:
           node-version-file: '.node-version'
           cache: npm
           registry-url: https://registry.npmjs.org/
+      - name: Check trusted publishing runtime
+        run: |
+          node --version
+          NPM_VERSION=$(npm --version)
+          echo "npm $NPM_VERSION"
+          node - "$NPM_VERSION" <<'NODE'
+          const version = process.argv[2];
+          const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+          const [major, minor, patch] = match ? match.slice(1).map(Number) : [];
+          if (!match || major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) {
+            throw new Error('npm ' + version + ' does not meet the trusted publishing requirement: use stable npm >=11.5.1.');
+          }
+          NODE
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Require a major release for the Angular support change
@@ -53,8 +69,6 @@ jobs:
       - name: Publish to npm
         working-directory: dist/drag-drop-layout
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.NEW_VERSION }}

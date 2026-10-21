@@ -120,7 +120,7 @@ test('reveals empty-row controls on hover and removes exactly one gap', async ({
   await page.getByRole('button', {name: 'Empty rows', exact: true}).click();
   const grid = page.locator('.grid-top');
   await grid.scrollIntoViewIfNeeded();
-  const control = grid.getByRole('button', {name: 'Remove row 2', exact: true});
+  const control = grid.getByRole('button', {name: 'Remove empty row 2', exact: true});
   await page.mouse.move(0, 0);
   await expect(control).toHaveCSS('opacity', '0');
   const wrapper = grid.locator('.ddl-empty-row').first();
@@ -146,7 +146,7 @@ test('allows keyboard removal and keeps overlays aligned after resize and scroll
   const upper = await grid.locator('ddl-item').first().boundingBox();
   expect(bounds!.y).toBeCloseTo(upper!.y + upper!.height + 20, 0);
   expect(bounds!.height).toBeGreaterThanOrEqual(100);
-  const control = grid.getByRole('button', {name: 'Remove row 2', exact: true});
+  const control = grid.getByRole('button', {name: 'Remove empty row 2', exact: true});
   await control.focus();
   await expect(control).toHaveCSS('opacity', '1');
   await page.keyboard.press('Enter');
@@ -165,15 +165,15 @@ test('allows dropping into a row covered by custom empty-row controls', async ({
   });
   await expect(grid.locator('.item-info').first()).toContainText('[1,2]');
   await expect(page.getByRole('status')).toContainText('move:');
-  await expect(grid.getByRole('button', {name: 'Remove row 1', exact: true})).toBeEnabled();
-  await expect(grid.getByRole('button', {name: 'Remove row 2', exact: true})).toHaveCount(0);
+  await expect(grid.getByRole('button', {name: 'Remove empty row 1', exact: true})).toBeEnabled();
+  await expect(grid.getByRole('button', {name: 'Remove empty row 2', exact: true})).toHaveCount(0);
 });
 
 test.describe('touch empty-row controls', () => {
   test.use({hasTouch: true, isMobile: true});
   test('keeps the removal button visible without hover', async ({page}) => {
     await page.getByRole('button', {name: 'Empty rows', exact: true}).tap();
-    const control = page.locator('.grid-top').getByRole('button', {name: 'Remove row 2', exact: true});
+    const control = page.locator('.grid-top').getByRole('button', {name: 'Remove empty row 2', exact: true});
     await expect(control).toHaveCSS('opacity', '1');
     await control.tap();
     await expect(page.getByRole('status')).toContainText('Removed empty row 2');
